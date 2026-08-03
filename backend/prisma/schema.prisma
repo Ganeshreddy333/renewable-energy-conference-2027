@@ -1,0 +1,125 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+// User model - for authentication
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String   // bcrypted
+  firstName String
+  lastName  String
+  role      String   @default("user") // "admin", "user", "speaker"
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  abstractSubmissions AbstractSubmission[]
+  registrations       Registration[]
+
+  @@map("users")
+}
+
+// Admin settings
+model AdminSettings {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     String   @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("admin_settings")
+}
+
+// Conference details
+model ConferenceInfo {
+  id    String @id @default(cuid())
+  title String
+  description String @db.Text
+  startDate DateTime
+  endDate   DateTime
+  location  String
+  image     String?
+
+  @@map("conference_info")
+}
+
+// Speakers
+model Speaker {
+  id          String   @id @default(cuid())
+  name        String
+  title       String?
+  bio         String?  @db.Text
+  image       String?
+  email       String
+  createdAt   DateTime @default(now())
+
+  sessions Session[]
+
+  @@map("speakers")
+}
+
+// Sessions/Tracks
+model Session {
+  id          String   @id @default(cuid())
+  title       String
+  description String   @db.Text
+  startTime   DateTime
+  endTime     DateTime
+  room        String
+  createdAt   DateTime @default(now())
+
+  speakers Speaker[]
+
+  @@map("sessions")
+}
+
+// Abstract submissions
+model AbstractSubmission {
+  id          String   @id @default(cuid())
+  title       String
+  description String   @db.Text
+  authorId    String
+  author      User     @relation(fields: [authorId], references: [id])
+  status      String   @default("pending") // "pending", "approved", "rejected"
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("abstract_submissions")
+}
+
+// User registrations
+model Registration {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  registrationType String @default("standard") // "standard", "premium", "student"
+  paymentStatus String @default("pending") // "pending", "completed", "failed"
+  couponCode  String?
+  amount      Decimal
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("registrations")
+}
+
+// Coupon codes
+model Coupon {
+  id        String   @id @default(cuid())
+  code      String   @unique
+  discount  Decimal  // percentage (5.00 = 5%)
+  isActive  Boolean  @default(true)
+  maxUses   Int?
+  usedCount Int      @default(0)
+  expiresAt DateTime?
+  createdAt DateTime @default(now())
+
+  @@map("coupons")
+}

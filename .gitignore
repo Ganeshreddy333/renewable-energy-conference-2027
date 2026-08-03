@@ -7,10 +7,14 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
+node_modules/
+dist/
+dist-ssr/
+.next/
+out/
+coverage/
 *.local
+*.tsbuildinfo
 
 # Editor directories and files
 .vscode/*
@@ -24,5 +28,20 @@ dist-ssr
 *.sw?
 
 .env
+.env.*
+!.env.example
+!**/.env.example
 
-.vercel
+.vercel/
+
+# Local backend uploads and generated database artifacts
+backend/storage/
+*.sqlite
+*.sqlite-journal
+
+# Test and deployment output
+playwright-report/
+test-results/
+
+# Unrelated vendor examples; the production application is in frontend/ and backend/
+payment-gateway-examples/
