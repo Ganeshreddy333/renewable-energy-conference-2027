@@ -50,7 +50,8 @@ async function bootstrap() {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
   });
 
-  const port = Number(process.env.API_PORT || process.env.PORT || 3001);
+  // Hosting providers such as Render supply PORT; local development can use API_PORT.
+  const port = Number(process.env.PORT || process.env.API_PORT || 3001);
   await app.listen(port, '0.0.0.0');
   console.log(`🚀 API running on port ${port}`);
   console.log(`📡 CORS enabled for: ${frontendUrls.join(', ')}`);
