@@ -7,7 +7,8 @@ FROM node:22-alpine AS build
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-RUN DATABASE_URL="mysql://user:pass@localhost:3306/db" npm run build
+# Compilation does not need a live database. DATABASE_URL is supplied securely by Render at runtime.
+RUN npm run build
 
 FROM node:22-alpine AS runner
 WORKDIR /app

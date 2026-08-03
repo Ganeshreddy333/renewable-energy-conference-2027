@@ -25,6 +25,16 @@ export class PrismaService implements OnModuleInit, OnModuleDestroy {
     try {
       const databaseUrl = new URL(url!);
       const isLocalDatabase = ['localhost', '127.0.0.1'].includes(databaseUrl.hostname);
+      const sslMode = databaseUrl.searchParams.get('ssl-mode')?.toLowerCase();
+      const sslCa = process.env.MYSQL_SSL_CA_BASE64
+        ? Buffer.from(process.env.MYSQL_SSL_CA_BASE64, 'base64').toString('utf8')
+        : process.env.MYSQL_SSL_CA?.replace(/\\n/g, '\n');
+      const requiresSsl = sslMode === 'required' || Boolean(sslCa);
+
+      if (requiresSsl && !sslCa) {
+        throw new Error('MySQL SSL is required but MYSQL_SSL_CA_BASE64 or MYSQL_SSL_CA is not configured.');
+      }
+
       const adapter = new PrismaMariaDb({
         host: databaseUrl.hostname,
         port: Number(databaseUrl.port) || 3306,
@@ -33,25 +43,18 @@ export class PrismaService implements OnModuleInit, OnModuleDestroy {
         database: databaseUrl.pathname.replace(/^\//, ''),
         connectionLimit: 5,
         allowPublicKeyRetrieval: isLocalDatabase,
+        ...(requiresSsl ? { ssl: { ca: sslCa, rejectUnauthorized: true } } : {}),
       });
       this.client = new PrismaClient({ adapter });
       Object.assign(this, this.client);
     } catch (error) {
-      console.warn('Prisma client initialization failed, falling back to mock client:', error);
-      this.client = this.createMockClient();
-      Object.assign(this, this.client);
+      throw new Error(`Prisma client initialization failed: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 
   async onModuleInit() {
     if (!this.enabled) return;
-    try {
-      if (typeof this['$connect'] === 'function') await this['$connect']();
-    } catch (error) {
-      console.warn('Prisma database connection failed, using the local fallback client:', error);
-      this.client = this.createMockClient();
-      Object.assign(this, this.client);
-    }
+    if (typeof this['$connect'] === 'function') await this['$connect']();
   }
 
   async onModuleDestroy() {
