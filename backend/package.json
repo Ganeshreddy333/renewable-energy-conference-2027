@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node dist/main.js",
     "dev": "ts-node -r tsconfig-paths/register src/main.ts",
-    "build": "nest build",
+    "build": "npm install --include=dev && nest build",
     "migrate:deploy": "prisma migrate deploy",
     "seed:admin": "node scripts/seed-admin.js",
     "test": "jest",
