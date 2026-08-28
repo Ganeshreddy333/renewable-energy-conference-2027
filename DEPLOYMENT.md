@@ -118,6 +118,15 @@ docker compose up --build
 - `NEXT_PUBLIC_API_URL` - Backend URL
 - `NEXT_PUBLIC_CLOUDINARY_*` - Cloudinary config
 
+### Payments and webhooks
+
+The backend creates provider checkout sessions itself; do not use a static payment link in production. Set `PAYMENT_MODE=production`, then configure only the provider(s) you offer:
+
+- Stripe: `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET`. In Stripe, send `checkout.session.completed`, `checkout.session.async_payment_succeeded`, and `payment_intent.succeeded` to `https://api.yourdomain.com/webhooks/payment/stripe`.
+- PayPal: `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`, and the dashboard-generated `PAYPAL_WEBHOOK_ID`. Subscribe to `PAYMENT.CAPTURE.COMPLETED` at `https://api.yourdomain.com/webhooks/payment/paypal`.
+
+Webhook signatures are mandatory. A browser return URL never marks a registration paid; only a verified provider event (or verified PayPal server-side capture) can do so. Test with each provider's sandbox before switching `PAYMENT_MODE` to `production`.
+
 ---
 
 ## ✅ Deployment Checklist
@@ -132,6 +141,8 @@ docker compose up --build
 - [ ] Email delivery tested
 - [ ] Image upload tested
 - [ ] Authentication tested
+- [ ] A signed Stripe or PayPal sandbox webhook changes a test registration to `paid`
+- [ ] The corresponding production webhook URL and secret/webhook ID are configured
 
 ---
 

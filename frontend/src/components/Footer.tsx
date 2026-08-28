@@ -51,7 +51,7 @@ const Footer = () => {
               </div>
               <div className="flex items-center gap-2">
                 <MapPin size={16} className="text-gold" />
-                <span>{values.conference_venue}</span>
+                <span className="whitespace-pre-line">{values.conference_venue}</span>
               </div>
             </div>
           </div>

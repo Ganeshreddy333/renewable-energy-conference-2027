@@ -26,9 +26,17 @@ export class AdminDataGuard implements CanActivate {
   async canActivate(context: ExecutionContext) {
     const request = context.switchToHttp().getRequest();
     const table = String(request.params.table || '');
+    const path = String(request.route?.path || request.path || '');
     const isPublicRequest =
       (request.method === 'GET' && publicReadTables.has(table)) ||
-      (request.method === 'POST' && publicInsertTables.has(table));
+      (request.method === 'POST' && publicInsertTables.has(table)) ||
+      (request.method === 'POST' && [
+        '/rpc/validate_registration_coupon',
+        '/functions/create-stripe-checkout',
+        '/functions/create-paypal-order',
+        '/functions/capture-paypal-order',
+      ].includes(path)) ||
+      (request.method === 'POST' && path.includes('/webhooks/payment/'));
 
     if (isPublicRequest) {
       request.isAdmin = false;

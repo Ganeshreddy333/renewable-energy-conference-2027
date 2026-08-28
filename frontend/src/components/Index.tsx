@@ -17,7 +17,7 @@ const IndexContent = () => {
   const paymentStatus = searchParams.get("payment");
   const paymentMessage =
     paymentStatus === "success"
-      ? "Payment completed successfully. Your registration is confirmed."
+      ? "Your payment return was received. We are confirming it securely with the payment provider; you will receive an email once confirmed."
       : paymentStatus === "cancel"
         ? "Payment was cancelled. Your registration remains pending."
         : null;

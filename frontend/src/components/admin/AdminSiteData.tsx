@@ -23,6 +23,7 @@ const suggestedRows: Array<TablesInsert<"site_data">> = [
   { data_key: "footer_description", label: "Footer Description", value: getDefaultSiteDataValue("footer_description"), group_name: "footer", value_type: "textarea", is_public: true },
   { data_key: "contact_email", label: "Contact Email", value: getDefaultSiteDataValue("contact_email"), group_name: "contact", value_type: "email", is_public: true },
   { data_key: "contact_phone", label: "Contact Phone", value: getDefaultSiteDataValue("contact_phone"), group_name: "contact", value_type: "text", is_public: true },
+  { data_key: "organizer_name", label: "Organizer Name", value: getDefaultSiteDataValue("organizer_name"), group_name: "conference", value_type: "text", is_public: true },
   { data_key: "conference_venue", label: "Conference Venue", value: getDefaultSiteDataValue("conference_venue"), group_name: "contact", value_type: "text", is_public: true },
 ];
 

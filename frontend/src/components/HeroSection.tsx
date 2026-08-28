@@ -5,7 +5,7 @@ import CountdownTimer from "./CountdownTimer";
 import Link from "next/link";
 import { useSiteData } from "@/hooks/useSiteData";
 import { useWebsiteContent } from "@/hooks/useWebsiteContent";
-import { CalendarDays, MapPin, Send, Ticket } from "lucide-react";
+import { CalendarDays, Download, Globe2, MapPin, Send, Ticket } from "lucide-react";
 
 const heroStats = [
   { value: "300+", label: "Expert Speakers" },
@@ -37,6 +37,15 @@ const HeroSection = () => {
             {values.hero_eyebrow}
           </motion.p>
 
+          <motion.p
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.05 }}
+            className="mb-4 text-sm font-bold uppercase tracking-[0.14em] text-white/85"
+          >
+            <span className="text-xs">Organizing by</span> <Globe2 size={20} strokeWidth={2.5} className="mx-1 inline-block align-[-4px] text-gold" aria-hidden="true" /> <span className="text-lg font-black text-gold">{values.organizer_name}</span>
+          </motion.p>
+
           <motion.h1
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -66,7 +75,7 @@ const HeroSection = () => {
             </span>
             <span className="inline-flex items-center gap-2 rounded-md bg-gold px-4 py-3 text-sm font-extrabold text-hero-bg shadow-lg">
               <MapPin size={18} />
-              {values.conference_venue}
+              <span className="whitespace-pre-line">{values.conference_venue}</span>
             </span>
           </motion.div>
 
@@ -113,6 +122,14 @@ const HeroSection = () => {
               <Ticket size={20} />
               <span>Register Now</span>
             </Link>
+            <a
+              href="/brochure-2027.pdf"
+              download="Renewable-Energy-2027-Conference-Brochure.pdf"
+              className="inline-flex min-h-14 items-center justify-center gap-3 rounded-md border border-white/70 bg-white/10 px-7 py-4 text-base font-extrabold text-white shadow-xl shadow-black/15 transition-all hover:-translate-y-0.5 hover:bg-white/20"
+            >
+              <Download size={20} />
+              <span>Download Brochure</span>
+            </a>
           </motion.div>
           </div>
 

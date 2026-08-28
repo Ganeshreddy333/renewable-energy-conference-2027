@@ -24,6 +24,14 @@ const MAX_ABSTRACT_FILE_SIZE_MB = 5;
 const MAX_ABSTRACT_FILE_SIZE_BYTES = MAX_ABSTRACT_FILE_SIZE_MB * 1024 * 1024;
 
 const titles = ["Dr.", "Prof.", "Mr.", "Mrs.", "Miss."];
+const presentationCategories = [
+  "Oral presentation",
+  "Poster presentation",
+  "Video presentation",
+  "Keynote presentation",
+  "Invited speaker presentation",
+  "Young researcher presentation",
+];
 
 const countries = [
   "Afghanistan",
@@ -222,6 +230,7 @@ const countries = [
   "Yemen",
   "Zambia",
   "Zimbabwe",
+  "Other",
 ];
 
 const AbstractSubmission = () => {
@@ -261,6 +270,11 @@ const AbstractSubmission = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isCaptchaVerified, setIsCaptchaVerified] = useState(false);
   const [captchaResetKey, setCaptchaResetKey] = useState(0);
+  const [countrySearch, setCountrySearch] = useState("");
+  const [otherCountry, setOtherCountry] = useState("");
+  const filteredCountries = countries.filter((country) =>
+    country.toLowerCase().includes(countrySearch.trim().toLowerCase()),
+  );
 
   useEffect(() => {
     const selectSectionFromHash = () => {
@@ -331,6 +345,7 @@ const AbstractSubmission = () => {
       formData.phone,
       formData.organization,
       formData.country,
+      formData.country === "Other" ? otherCountry : "selected",
       formData.presentationType,
       formData.session,
     ];
@@ -390,7 +405,7 @@ const AbstractSubmission = () => {
         email: formData.email.trim(),
         phone: formData.phone.trim(),
         affiliation: formData.organization.trim(),
-        country: formData.country.trim(),
+        country: (formData.country === "Other" ? otherCountry : formData.country).trim(),
         presentation_type: formData.presentationType.trim(),
         abstract_title: formData.session.trim(),
         abstract_text: "Submitted as uploaded document.",
@@ -413,6 +428,7 @@ const AbstractSubmission = () => {
         presentationType: "",
         session: "",
       });
+      setOtherCountry("");
       setSelectedFiles([]);
       setIsCaptchaVerified(false);
       setCaptchaResetKey((current) => current + 1);
@@ -531,18 +547,49 @@ const AbstractSubmission = () => {
 
               <div>
                 <label className="text-sm font-body font-medium text-card-foreground mb-1 block">Country *</label>
-                <Select value={formData.country} onValueChange={(value) => setFormData({ ...formData, country: value })} required>
+                <Select
+                  value={formData.country}
+                  onValueChange={(value) => {
+                    setFormData({ ...formData, country: value });
+                    setCountrySearch("");
+                    if (value !== "Other") setOtherCountry("");
+                  }}
+                  required
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Select country" />
                   </SelectTrigger>
                   <SelectContent>
-                    {countries.map((country) => (
+                    <div className="sticky top-0 z-10 bg-popover p-2">
+                      <Input
+                        autoFocus
+                        value={countrySearch}
+                        onChange={(event) => setCountrySearch(event.target.value)}
+                        onKeyDown={(event) => event.stopPropagation()}
+                        placeholder="Search country"
+                        aria-label="Search country"
+                      />
+                    </div>
+                    {filteredCountries.map((country) => (
                       <SelectItem key={country} value={country}>
                         {country}
                       </SelectItem>
                     ))}
+                    {filteredCountries.length === 0 && (
+                      <p className="px-2 py-3 text-sm text-muted-foreground">No countries found.</p>
+                    )}
                   </SelectContent>
                 </Select>
+                {formData.country === "Other" && (
+                  <Input
+                    className="mt-2"
+                    value={otherCountry}
+                    onChange={(event) => setOtherCountry(event.target.value)}
+                    placeholder="Enter country name"
+                    aria-label="Enter country name"
+                    required
+                  />
+                )}
               </div>
 
               <div>
@@ -552,8 +599,11 @@ const AbstractSubmission = () => {
                     <SelectValue placeholder="Select category" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Oral Presentation">Oral</SelectItem>
-                    <SelectItem value="Poster Presentation">Poster</SelectItem>
+                    {presentationCategories.map((category) => (
+                      <SelectItem key={category} value={category}>
+                        {category}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>

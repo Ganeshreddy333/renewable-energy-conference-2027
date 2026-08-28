@@ -1,5 +1,5 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { randomUUID, createHmac } from 'crypto';
+import { BadRequestException, Injectable, NotFoundException, ServiceUnavailableException, UnauthorizedException } from '@nestjs/common';
+import { randomUUID, createHmac, timingSafeEqual } from 'crypto';
 import PDFDocument from 'pdfkit';
 import { PrismaService } from '../database/prisma.service';
 import { EmailService } from '../email/email.service';
@@ -60,6 +60,13 @@ const TABLES: Record<string, TableConfig> = {
   },
 };
 
+const DEFAULT_PRICES: Record<string, Record<string, number>> = {
+  speaker: { pre: 109, early: 149, mid: 179, onspot: 199 },
+  poster: { pre: 69, early: 99, mid: 129, onspot: 149 },
+  student: { pre: 49, early: 59, mid: 79, onspot: 99 },
+  delegate: { pre: 39, early: 49, mid: 69, onspot: 89 },
+};
+
 @Injectable()
 export class DataService {
   constructor(
@@ -98,6 +105,63 @@ export class DataService {
     }
 
     return Array.isArray(payload) ? created : created[0];
+  }
+
+  async createPublicRegistration(payload: Record<string, unknown>) {
+    const fullName = String(payload.full_name || '').trim();
+    const email = String(payload.email || '').trim().toLowerCase();
+    const planKey = String(payload.plan_key || '').trim().toLowerCase();
+    const provider = String(payload.payment_provider || 'stripe').toLowerCase();
+    if (!fullName || !email || !/^\S+@\S+\.\S+$/.test(email)) throw new BadRequestException('A valid name and email are required');
+    if (!['stripe', 'paypal'].includes(provider)) throw new BadRequestException('Unsupported payment provider');
+
+    const plan = await this.resolveRegistrationPlan(planKey);
+    let amount = plan.amount;
+    let couponCode: string | null = null;
+    const requestedCoupon = String(payload.coupon_code || '').trim();
+    if (requestedCoupon) {
+      const coupon = await this.validateCoupon(requestedCoupon, amount);
+      if (!coupon.valid) throw new BadRequestException(coupon.message || 'Invalid coupon');
+      amount = Number(coupon.final_amount);
+      couponCode = String(coupon.code);
+    }
+
+    const total = Math.round(amount * 1.05 * 100) / 100;
+    return this.insert('registration_intents', {
+      full_name: fullName,
+      email,
+      phone: String(payload.phone || '').trim() || 'Not provided',
+      affiliation: String(payload.affiliation || '').trim(),
+      country: String(payload.country || '').trim(),
+      designation: String(payload.designation || plan.label).trim(),
+      plan_key: planKey,
+      plan_name: plan.label,
+      amount_usd: total,
+      currency: 'USD',
+      coupon_code: couponCode,
+      payment_provider: provider,
+      payment_status: 'pending',
+      status: 'initiated',
+      notes: String(payload.notes || '').slice(0, 4000),
+    });
+  }
+
+  async createPublicContactMessage(payload: Record<string, unknown>) {
+    const name = String(payload.name || '').trim();
+    const email = String(payload.email || '').trim().toLowerCase();
+    const message = String(payload.message || '').trim();
+    if (!name || !/^\S+@\S+\.\S+$/.test(email) || !message) throw new BadRequestException('Name, email, and message are required');
+    return this.insert('contact_messages', { name, email, subject: String(payload.subject || '').trim().slice(0, 255), message: message.slice(0, 10000), status: 'new' });
+  }
+
+  async createPublicAbstractSubmission(payload: Record<string, unknown>) {
+    const fullName = String(payload.full_name || '').trim();
+    const email = String(payload.email || '').trim().toLowerCase();
+    const title = String(payload.abstract_title || '').trim();
+    if (!fullName || !/^\S+@\S+\.\S+$/.test(email) || !title) throw new BadRequestException('Name, email, and abstract title are required');
+    const allowed = TABLES.abstract_submissions.writable;
+    const cleaned = Object.fromEntries(Object.entries(payload).filter(([key]) => allowed.includes(key)));
+    return this.insert('abstract_submissions', { ...cleaned, full_name: fullName, email, abstract_title: title, status: 'pending' });
   }
 
   async upsert(table: string, payload: Record<string, unknown> | Record<string, unknown>[], onConflict?: string) {
@@ -169,17 +233,24 @@ export class DataService {
     if (!registrationId) throw new BadRequestException('Registration id is required');
     if (!orderId) throw new BadRequestException('PayPal order id is required');
 
+    const order = await this.payPalRequest(`/v2/checkout/orders/${encodeURIComponent(orderId)}/capture`, 'POST', {});
+    if (String(order.status).toUpperCase() !== 'COMPLETED') {
+      throw new BadRequestException(`PayPal order is not complete (status: ${String(order.status || 'unknown')})`);
+    }
+
+    const capture = (order.purchase_units as any[])?.[0]?.payments?.captures?.[0];
     const result = await this.updateRegistrationPayment({
       p_registration_id: registrationId,
       p_payment_status: 'paid',
       p_payment_provider: 'paypal',
-      p_payment_order_id: orderId,
+      p_payment_order_id: order.id || orderId,
+      p_payment_reference: capture?.id || order.id || orderId,
       p_gateway_response: {
         provider: 'paypal',
         orderId,
         capturedAt: new Date().toISOString(),
-        source: 'backend-capture',
-        payload,
+        source: 'paypal-api-capture',
+        order,
       },
     });
 
@@ -246,39 +317,28 @@ export class DataService {
     return updated;
   }
 
-  async verifyPaymentWebhook(provider: string, payload: Record<string, unknown>, signature?: string) {
+  async verifyPaymentWebhook(
+    provider: string,
+    payload: Record<string, unknown>,
+    rawBody: Buffer | undefined,
+    headers: Record<string, string | string[] | undefined>,
+  ) {
     const normalizedProvider = (provider || 'stripe').toLowerCase();
-    const secret = this.getWebhookSecret(normalizedProvider);
+    if (!['stripe', 'paypal'].includes(normalizedProvider)) {
+      throw new BadRequestException(`Unsupported payment webhook provider: ${normalizedProvider}`);
+    }
+
+    if (!rawBody?.length) throw new BadRequestException('Webhook body is missing');
+    if (normalizedProvider === 'stripe') this.verifyStripeSignature(rawBody, this.header(headers, 'stripe-signature'));
+    else await this.verifyPayPalWebhook(payload, headers);
+
     const providerReference = this.getProviderReference(payload, normalizedProvider);
-
-    if (!secret) {
-      return {
-        valid: true,
-        skipped: true,
-        provider: normalizedProvider,
-        message: 'Webhook verification skipped because no secret is configured yet.',
-      };
-    }
-
-    const signedPayload = JSON.stringify(payload ?? {});
-    const expectedSignature = createHmac('sha256', secret).update(signedPayload).digest('hex');
-    const providedSignature = String(signature || '').trim();
-
-    if (!providedSignature) {
-      return { valid: false, provider: normalizedProvider, message: 'Missing webhook signature' };
-    }
-
-    const valid = this.safeCompare(expectedSignature, providedSignature);
-
-    if (!valid) {
-      return { valid: false, provider: normalizedProvider, message: 'Invalid webhook signature' };
-    }
 
     if (providerReference) {
       const existing = await this.list('registration_intents', { payment_reference: providerReference }) as any[];
       if (existing.length > 0) {
         return {
-          valid: true,
+          received: true,
           duplicate: true,
           provider: normalizedProvider,
           message: 'Duplicate webhook event ignored.',
@@ -287,8 +347,19 @@ export class DataService {
       }
     }
 
-    const registrationId = String(payload.registrationId ?? payload.registration_id ?? payload.id ?? '');
+    const registrationId = this.getWebhookRegistrationId(payload, normalizedProvider);
     if (registrationId) {
+      const current = (await this.list('registration_intents', { id: registrationId }) as any[])[0];
+      if (!current) throw new NotFoundException('Webhook references an unknown registration');
+
+      const isPaid = normalizedProvider === 'stripe'
+        ? ['checkout.session.completed', 'checkout.session.async_payment_succeeded', 'payment_intent.succeeded'].includes(String(payload.type))
+        : String(payload.event_type) === 'PAYMENT.CAPTURE.COMPLETED';
+
+      if (!isPaid) {
+        return { received: true, provider: normalizedProvider, ignored: true, message: 'Webhook event does not confirm payment.' };
+      }
+
       await this.updateRegistrationPayment({
         p_registration_id: registrationId,
         p_payment_status: 'paid',
@@ -303,7 +374,7 @@ export class DataService {
     }
 
     return {
-      valid: true,
+      received: true,
       provider: normalizedProvider,
       message: 'Webhook verified successfully.',
     };
@@ -316,7 +387,7 @@ export class DataService {
         mode: process.env.PAYMENT_MODE || 'sandbox',
       },
       paypal: {
-        configured: Boolean(process.env.PAYPAL_CLIENT_ID && process.env.PAYPAL_CLIENT_SECRET && process.env.PAYPAL_WEBHOOK_SECRET),
+        configured: Boolean(process.env.PAYPAL_CLIENT_ID && process.env.PAYPAL_CLIENT_SECRET && process.env.PAYPAL_WEBHOOK_ID),
         mode: process.env.PAYMENT_MODE || 'sandbox',
       },
       razorpay: {
@@ -475,11 +546,143 @@ export class DataService {
     return configMap[provider] || '';
   }
 
+  private verifyStripeSignature(rawBody: Buffer, signatureHeader?: string) {
+    const secret = process.env.STRIPE_WEBHOOK_SECRET;
+    if (!secret) throw new ServiceUnavailableException('Stripe webhook verification is not configured');
+    if (!signatureHeader) throw new UnauthorizedException('Missing Stripe signature');
+
+    const values = signatureHeader.split(',').reduce<Record<string, string[]>>((result, part) => {
+      const [key, value] = part.split('=', 2);
+      if (key && value) (result[key] ||= []).push(value);
+      return result;
+    }, {});
+    const timestamp = values.t?.[0];
+    const signatures = values.v1 || [];
+    if (!timestamp || !signatures.length || !/^\d+$/.test(timestamp)) {
+      throw new UnauthorizedException('Invalid Stripe signature header');
+    }
+
+    // Stripe recommends a five minute tolerance to reject replayed deliveries.
+    if (Math.abs(Math.floor(Date.now() / 1000) - Number(timestamp)) > 300) {
+      throw new UnauthorizedException('Expired Stripe webhook signature');
+    }
+    const expected = createHmac('sha256', secret).update(`${timestamp}.${rawBody.toString('utf8')}`).digest('hex');
+    const verified = signatures.some((signature) => this.safeCompare(expected, signature));
+    if (!verified) throw new UnauthorizedException('Invalid Stripe webhook signature');
+  }
+
+  private async verifyPayPalWebhook(payload: Record<string, unknown>, headers: Record<string, string | string[] | undefined>) {
+    const webhookId = process.env.PAYPAL_WEBHOOK_ID;
+    if (!webhookId) throw new ServiceUnavailableException('PayPal webhook verification is not configured');
+
+    const verification = await this.payPalRequest('/v1/notifications/verify-webhook-signature', 'POST', {
+      auth_algo: this.header(headers, 'paypal-auth-algo'),
+      cert_url: this.header(headers, 'paypal-cert-url'),
+      transmission_id: this.header(headers, 'paypal-transmission-id'),
+      transmission_sig: this.header(headers, 'paypal-transmission-sig'),
+      transmission_time: this.header(headers, 'paypal-transmission-time'),
+      webhook_id: webhookId,
+      webhook_event: payload,
+    });
+    if (verification.verification_status !== 'SUCCESS') {
+      throw new UnauthorizedException('Invalid PayPal webhook signature');
+    }
+  }
+
+  private async createStripeCheckoutSession(registrationId: string, registration: Record<string, any>, amount: number, frontendUrl: string) {
+    const secretKey = process.env.STRIPE_SECRET_KEY;
+    if (!secretKey) throw new ServiceUnavailableException('Stripe is not configured');
+
+    const form = new URLSearchParams({
+      mode: 'payment',
+      success_url: `${frontendUrl}/registration/success?provider=stripe&registration_id=${encodeURIComponent(registrationId)}&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${frontendUrl}/registration/cancel?provider=stripe&registration_id=${encodeURIComponent(registrationId)}`,
+      client_reference_id: registrationId,
+      'metadata[registration_id]': registrationId,
+      'payment_intent_data[metadata][registration_id]': registrationId,
+      'line_items[0][price_data][currency]': String(registration.currency || 'USD').toLowerCase(),
+      'line_items[0][price_data][unit_amount]': String(Math.round(amount * 100)),
+      'line_items[0][price_data][product_data][name]': String(registration.plan_name || 'Conference registration'),
+      'line_items[0][quantity]': '1',
+    });
+    if (registration.email) form.set('customer_email', String(registration.email));
+
+    const response = await fetch('https://api.stripe.com/v1/checkout/sessions', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${secretKey}`,
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Idempotency-Key': `conference-checkout-${registrationId}`,
+      },
+      body: form.toString(),
+    });
+    const result = await response.json().catch(() => ({})) as any;
+    if (!response.ok || !result.url) throw new BadRequestException(result?.error?.message || 'Stripe could not create a checkout session');
+    return { url: String(result.url), reference: String(result.id) };
+  }
+
+  private async createPayPalCheckout(registrationId: string, registration: Record<string, any>, amount: number, frontendUrl: string) {
+    const order = await this.payPalRequest('/v2/checkout/orders', 'POST', {
+      intent: 'CAPTURE',
+      purchase_units: [{
+        reference_id: registrationId,
+        custom_id: registrationId,
+        description: String(registration.plan_name || 'Conference registration'),
+        amount: { currency_code: String(registration.currency || 'USD').toUpperCase(), value: amount.toFixed(2) },
+      }],
+      application_context: {
+        return_url: `${frontendUrl}/registration/success?provider=paypal&registration_id=${encodeURIComponent(registrationId)}`,
+        cancel_url: `${frontendUrl}/registration/cancel?provider=paypal&registration_id=${encodeURIComponent(registrationId)}`,
+        user_action: 'PAY_NOW',
+      },
+    });
+    const approvalUrl = (order.links as any[])?.find((link) => link.rel === 'approve')?.href;
+    if (!approvalUrl) throw new BadRequestException('PayPal did not return an approval URL');
+    return { url: String(approvalUrl), reference: String(order.id) };
+  }
+
+  private async payPalRequest(path: string, method: 'POST' | 'GET', body?: Record<string, unknown>) {
+    const clientId = process.env.PAYPAL_CLIENT_ID;
+    const clientSecret = process.env.PAYPAL_CLIENT_SECRET;
+    if (!clientId || !clientSecret) throw new ServiceUnavailableException('PayPal is not configured');
+    const baseUrl = process.env.PAYMENT_MODE === 'production' ? 'https://api-m.paypal.com' : 'https://api-m.sandbox.paypal.com';
+    const basicAuth = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
+    const tokenResponse = await fetch(`${baseUrl}/v1/oauth2/token`, {
+      method: 'POST',
+      headers: { Authorization: `Basic ${basicAuth}`, 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: 'grant_type=client_credentials',
+    });
+    const token = await tokenResponse.json().catch(() => ({})) as any;
+    if (!tokenResponse.ok || !token.access_token) throw new ServiceUnavailableException('Could not authenticate with PayPal');
+
+    const response = await fetch(`${baseUrl}${path}`, {
+      method,
+      headers: { Authorization: `Bearer ${token.access_token}`, 'Content-Type': 'application/json' },
+      ...(body ? { body: JSON.stringify(body) } : {}),
+    });
+    const result = await response.json().catch(() => ({})) as any;
+    if (!response.ok) throw new BadRequestException(result?.message || 'PayPal request failed');
+    return result as Record<string, any>;
+  }
+
+  private getWebhookRegistrationId(payload: Record<string, unknown>, provider: string) {
+    const data = payload.data as Record<string, any> | undefined;
+    const resource = payload.resource as Record<string, any> | undefined;
+    if (provider === 'stripe') {
+      return String(data?.object?.client_reference_id || data?.object?.metadata?.registration_id || data?.object?.payment_intent?.metadata?.registration_id || '');
+    }
+    return String(resource?.custom_id || resource?.purchase_units?.[0]?.custom_id || '');
+  }
+
+  private header(headers: Record<string, string | string[] | undefined>, name: string) {
+    const value = headers[name] || headers[name.toLowerCase()];
+    return Array.isArray(value) ? value[0] : value;
+  }
+
   private safeCompare(expected: string, actual: string) {
-    if (expected.length !== actual.length) return false;
-    let diff = 0;
-    for (let i = 0; i < expected.length; i += 1) diff |= expected.charCodeAt(i) ^ actual.charCodeAt(i);
-    return diff === 0;
+    const expectedBytes = Buffer.from(expected);
+    const actualBytes = Buffer.from(actual);
+    return expectedBytes.length === actualBytes.length && timingSafeEqual(expectedBytes, actualBytes);
   }
 
   private async createHostedCheckout(provider: 'stripe' | 'paypal', payload: Record<string, unknown>) {
@@ -491,51 +694,35 @@ export class DataService {
     const registrationRow = registration[0] ?? {};
     const amount = Number(registrationRow.amount_usd ?? payload.amountUsd ?? payload.amount ?? 0);
     const email = String(registrationRow.email ?? payload.email ?? '');
-    const providerConfig = provider === 'stripe'
-      ? {
-          envKey: 'NEXT_PUBLIC_STRIPE_PAYMENT_LINK_SPEAKER',
-          defaultBase: 'https://buy.stripe.com',
-          fallbackUrl: `${frontendUrl}/registration/success?provider=stripe&registration_id=${encodeURIComponent(registrationId)}`,
-        }
-      : {
-          envKey: 'NEXT_PUBLIC_PAYPAL_PAYMENT_LINK_SPEAKER',
-          defaultBase: 'https://www.paypal.com',
-          fallbackUrl: `${frontendUrl}/registration/success?provider=paypal&registration_id=${encodeURIComponent(registrationId)}`,
-        };
+    if (!registrationRow.id) throw new NotFoundException('Registration not found');
+    if (!Number.isFinite(amount) || amount <= 0) throw new BadRequestException('Registration amount must be greater than zero');
 
-    const configuredLink = process.env[providerConfig.envKey] || process.env[provider === 'stripe' ? 'NEXT_PUBLIC_STRIPE_PAYMENT_LINK_DELEGATE' : 'NEXT_PUBLIC_PAYPAL_PAYMENT_LINK_DELEGATE'];
-    const paymentLink = configuredLink && configuredLink.trim() ? configuredLink.trim() : providerConfig.fallbackUrl;
-    const finalUrl = this.appendPaymentParams(paymentLink, {
-      registration_id: registrationId,
-      provider,
-      email,
-      amount: Number.isFinite(amount) ? amount.toFixed(2) : '0.00',
-      plan_key: registrationRow.plan_key ?? payload.planKey ?? 'standard',
-      plan_name: registrationRow.plan_name ?? payload.planName ?? 'conference-registration',
-      coupon_code: registrationRow.coupon_code ?? payload.couponCode ?? '',
-    });
+    const checkout = provider === 'stripe'
+      ? await this.createStripeCheckoutSession(registrationId, registrationRow, amount, frontendUrl)
+      : await this.createPayPalCheckout(registrationId, registrationRow, amount, frontendUrl);
 
     await this.updateRegistrationPayment({
       p_registration_id: registrationId,
       p_payment_provider: provider,
       p_payment_status: 'pending',
-      p_payment_reference: `checkout-${provider}-${Date.now()}`,
+      p_payment_reference: checkout.reference,
+      ...(provider === 'stripe' ? { p_payment_session_id: checkout.reference } : { p_payment_order_id: checkout.reference }),
       p_gateway_response: {
         provider,
         registrationId,
-        url: finalUrl,
+        url: checkout.url,
+        reference: checkout.reference,
         createdAt: new Date().toISOString(),
-        mode: 'hosted-link',
+        mode: 'provider-api',
       },
     });
 
     return {
       provider,
       registrationId,
-      url: finalUrl,
+      url: checkout.url,
       status: 'pending',
-      mock: paymentLink === providerConfig.fallbackUrl,
-      message: paymentLink === providerConfig.fallbackUrl ? 'Using local fallback success route because no provider URL is configured.' : 'Payment session created successfully.',
+      message: 'Payment session created successfully.',
     };
   }
 
@@ -551,6 +738,31 @@ export class DataService {
     } catch {
       return paymentUrl;
     }
+  }
+
+  private async resolveRegistrationPlan(planKey: string) {
+    const match = /^(pre|early|mid|onspot)-(speaker|poster|student|delegate)$/.exec(planKey);
+    if (!match) throw new BadRequestException('Invalid registration plan');
+    const [, period, category] = match;
+    const priceField: Record<string, string> = { pre: 'preEarly', early: 'earlyBird', mid: 'midterm', onspot: 'onSpot' };
+    let amount = DEFAULT_PRICES[category][period];
+    let label = category.charAt(0).toUpperCase() + category.slice(1);
+
+    const settings = await this.list('site_data', { data_key: 'registration_pricing' }) as any[];
+    if (settings[0]?.value) {
+      try {
+        const prices = JSON.parse(String(settings[0].value));
+        const configured = Array.isArray(prices) ? prices.find((row) => row?.id === category) : undefined;
+        if (configured && Number.isFinite(Number(configured[priceField[period]]))) {
+          amount = Number(configured[priceField[period]]);
+          label = String(configured.category || label);
+        }
+      } catch {
+        // Defaults keep checkout available if a non-critical display setting is malformed.
+      }
+    }
+    if (!Number.isFinite(amount) || amount <= 0) throw new BadRequestException('This registration plan is unavailable');
+    return { amount, label };
   }
 
   private getTable(table: string) {

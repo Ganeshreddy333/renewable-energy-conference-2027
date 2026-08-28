@@ -10,5 +10,6 @@ import { AdminDataGuard } from './admin-data.guard';
   imports: [PrismaModule, EmailModule, JwtModule],
   controllers: [DataController],
   providers: [DataService, AdminDataGuard],
+  exports: [AdminDataGuard],
 })
 export class DataModule {}

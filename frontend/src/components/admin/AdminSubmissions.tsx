@@ -74,6 +74,7 @@ const AdminSubmissions = () => {
   const [abstracts, setAbstracts] = useState<AbstractSubmission[]>([]);
   const [messages, setMessages] = useState<ContactMessage[]>([]);
   const [providerStatus, setProviderStatus] = useState<PaymentProviderStatus | null>(null);
+  const [updatingAbstractId, setUpdatingAbstractId] = useState<string | null>(null);
   const { toast } = useToast();
 
   const fetchData = useCallback(async () => {
@@ -162,6 +163,28 @@ const AdminSubmissions = () => {
 
   const openExternalUrl = (url: string) => {
     window.open(url, "_blank", "noopener,noreferrer");
+  };
+
+  const updateAbstractStatus = async (id: string, status: "approved" | "rejected") => {
+    setUpdatingAbstractId(id);
+
+    const { error } = await apiClient
+      .from("abstract_submissions")
+      .update({ status })
+      .eq("id", id);
+
+    if (error) {
+      toast({
+        title: "Could not update abstract",
+        description: error.message,
+        variant: "destructive",
+      });
+    } else {
+      setAbstracts((current) => current.map((item) => (item.id === id ? { ...item, status } : item)));
+      toast({ title: `Abstract ${status}`, description: `The submission has been ${status}.` });
+    }
+
+    setUpdatingAbstractId(null);
   };
 
   const registrationCounts = registrations.reduce(
@@ -324,13 +347,14 @@ const AdminSubmissions = () => {
                     <TableHead>Title</TableHead>
                     <TableHead className="hidden md:table-cell">Type</TableHead>
                     <TableHead className="hidden md:table-cell">Assets</TableHead>
+                    <TableHead>Review</TableHead>
                     <TableHead className="hidden lg:table-cell">Created</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {abstracts.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                      <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
                         No abstract submissions yet.
                       </TableCell>
                     </TableRow>
@@ -395,6 +419,27 @@ const AdminSubmissions = () => {
                                   {item.voice_file_name || "Voice"}
                                 </Button>
                               ) : null}
+                            </div>
+                          </TableCell>
+                          <TableCell className="min-w-[180px] align-top">
+                            <div className="flex flex-col gap-2 sm:flex-row">
+                              <Button
+                                type="button"
+                                size="sm"
+                                disabled={updatingAbstractId === item.id || item.status === "approved"}
+                                onClick={() => updateAbstractStatus(item.id, "approved")}
+                              >
+                                {updatingAbstractId === item.id ? "Saving..." : "Approve"}
+                              </Button>
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="destructive"
+                                disabled={updatingAbstractId === item.id || item.status === "rejected"}
+                                onClick={() => updateAbstractStatus(item.id, "rejected")}
+                              >
+                                Reject
+                              </Button>
                             </div>
                           </TableCell>
                           <TableCell className="hidden lg:table-cell align-top">{formatDate(item.created_at)}</TableCell>

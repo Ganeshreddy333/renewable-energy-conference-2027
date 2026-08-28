@@ -21,6 +21,7 @@ coverage/
 !.vscode/extensions.json
 .idea
 .DS_Store
+__MACOSX/
 *.suo
 *.ntvs*
 *.njsproj

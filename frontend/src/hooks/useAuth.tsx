@@ -30,19 +30,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const applySession = useCallback(async (nextSession: Session | null) => {
     const checkId = authCheckId.current + 1;
     authCheckId.current = checkId;
+    const validSession = nextSession?.access_token && nextSession.user ? nextSession : null;
 
     setLoading(true);
-    setSession(nextSession);
-    setUser(nextSession?.user ?? null);
+    setSession(validSession);
+    setUser(validSession?.user ?? null);
 
-    if (!nextSession?.user) {
+    if (!validSession) {
       setIsAdmin(false);
       setLoading(false);
       return;
     }
 
     try {
-      const hasAdminRole = await checkAdmin(nextSession.user);
+      const hasAdminRole = await checkAdmin(validSession.user);
 
       if (authCheckId.current === checkId) {
         setIsAdmin(hasAdminRole);

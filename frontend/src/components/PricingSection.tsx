@@ -218,6 +218,11 @@ const PricingSection = () => {
   const [hasAcceptedTerms, setHasAcceptedTerms] = useState(false);
   const [isTermsDialogOpen, setIsTermsDialogOpen] = useState(false);
   const [captchaResetKey, setCaptchaResetKey] = useState(0);
+  const [countrySearch, setCountrySearch] = useState("");
+  const [otherCountry, setOtherCountry] = useState("");
+  const filteredCountries = countryOptions.filter((country) =>
+    country.toLowerCase().includes(countrySearch.trim().toLowerCase()),
+  );
 
   const today = useMemo(getToday, []);
   const registrationGroups = useMemo(
@@ -361,6 +366,7 @@ const PricingSection = () => {
 
   const handleReset = () => {
     setFormValues(initialForm);
+    setOtherCountry("");
     setSelectedCategoryKey(availableCategories[0]?.key ?? "early-speaker");
     setParticipants(1);
     setCouponCode("");
@@ -373,6 +379,7 @@ const PricingSection = () => {
   const handleProceed = async () => {
     const requiredFields: Array<keyof FormValues> = ["title", "name", "email", "organization", "country"];
     const hasMissingField = requiredFields.some((field) => !formValues[field].trim());
+    const hasMissingOtherCountry = formValues.country === "Other" && !otherCountry.trim();
 
     if (!availableCategories.some((category) => category.key === selectedCategoryKey)) {
       toast({
@@ -383,7 +390,7 @@ const PricingSection = () => {
       return;
     }
 
-    if (hasMissingField) {
+    if (hasMissingField || hasMissingOtherCountry) {
       toast({
         title: "Complete required fields",
         description: "Title, Name, Email, Organization, and Country are required.",
@@ -485,7 +492,7 @@ const PricingSection = () => {
         email: formValues.email.trim(),
         phone: formValues.phone.trim() || formValues.whatsApp.trim() || "Not provided",
         affiliation: formValues.organization.trim(),
-        country: formValues.country,
+        country: formValues.country === "Other" ? otherCountry.trim() : formValues.country,
         coupon_code: effectiveCoupon?.code || null,
         designation: selectedCategory.label,
         notes,
@@ -636,18 +643,48 @@ const PricingSection = () => {
               </div>
               <div>
                 <label className="mb-2 block text-sm font-semibold text-foreground">Country*</label>
-                <Select value={formValues.country} onValueChange={(value) => updateFormValue("country", value)}>
+                <Select
+                  value={formValues.country}
+                  onValueChange={(value) => {
+                    updateFormValue("country", value);
+                    setCountrySearch("");
+                    if (value !== "Other") setOtherCountry("");
+                  }}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Select" />
                   </SelectTrigger>
                   <SelectContent>
-                    {countryOptions.map((country) => (
+                    <div className="sticky top-0 z-10 bg-popover p-2">
+                      <Input
+                        autoFocus
+                        value={countrySearch}
+                        onChange={(event) => setCountrySearch(event.target.value)}
+                        onKeyDown={(event) => event.stopPropagation()}
+                        placeholder="Search country"
+                        aria-label="Search country"
+                      />
+                    </div>
+                    {filteredCountries.map((country) => (
                       <SelectItem key={country} value={country}>
                         {country}
                       </SelectItem>
                     ))}
+                    {filteredCountries.length === 0 && (
+                      <p className="px-2 py-3 text-sm text-muted-foreground">No countries found.</p>
+                    )}
                   </SelectContent>
                 </Select>
+                {formValues.country === "Other" && (
+                  <Input
+                    className="mt-2"
+                    value={otherCountry}
+                    onChange={(event) => setOtherCountry(event.target.value)}
+                    placeholder="Enter country name"
+                    aria-label="Enter country name"
+                    required
+                  />
+                )}
               </div>
             </div>
           </div>

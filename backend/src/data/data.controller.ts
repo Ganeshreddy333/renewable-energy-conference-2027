@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Headers, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Headers, HttpCode, Param, Patch, Post, Query, RawBodyRequest, Req, UseGuards } from '@nestjs/common';
 import type { Request } from 'express';
 import { DataService } from './data.service';
 import { AdminDataGuard } from './admin-data.guard';
@@ -32,6 +32,9 @@ export class DataController {
     @Query('upsert') upsert?: string,
     @Query('onConflict') onConflict?: string,
   ) {
+    if (table === 'registration_intents') return this.dataService.createPublicRegistration(payload as Record<string, unknown>);
+    if (table === 'contact_messages') return this.dataService.createPublicContactMessage(payload as Record<string, unknown>);
+    if (table === 'abstract_submissions') return this.dataService.createPublicAbstractSubmission(payload as Record<string, unknown>);
     if (upsert === '1') return this.dataService.upsert(table, payload, onConflict);
     return this.dataService.insert(table, payload);
   }
@@ -90,13 +93,14 @@ export class DataController {
   }
 
   @Post('webhooks/payment/:provider')
+  @HttpCode(200)
   async handlePaymentWebhook(
     @Param('provider') provider: string,
     @Body() body: Record<string, unknown>,
-    @Headers('x-signature') xSignature?: string,
-    @Headers('stripe-signature') stripeSignature?: string,
+    @Req() request: RawBodyRequest<Request>,
+    @Headers() headers: Record<string, string | string[] | undefined>,
   ) {
-    return this.dataService.verifyPaymentWebhook(provider, body, xSignature || stripeSignature);
+    return this.dataService.verifyPaymentWebhook(provider, body, request.rawBody, headers);
   }
 
   private parse<T>(value: string | undefined, fallback: T): T {

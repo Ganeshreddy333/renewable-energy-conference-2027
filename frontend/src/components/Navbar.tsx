@@ -17,6 +17,15 @@ const Navbar = () => {
   const { getSection } = useWebsiteContent();
   const brand = getSection("site_brand", { title: "Renewable Energy", content: "Conference 2027" });
 
+  const scrollHomeToTop = (event: React.MouseEvent<HTMLAnchorElement>) => {
+    if (pathname !== "/") return;
+
+    // Next.js does not navigate when the current URL is already "/".
+    // Handle that case explicitly so Home always returns the visitor to the top.
+    event.preventDefault();
+    window.scrollTo({ top: 0, left: 0, behavior: "smooth" });
+  };
+
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 border-b border-white/10 bg-hero-bg/95 shadow-lg shadow-black/10 backdrop-blur-md">
       <div className="container mx-auto px-4">
@@ -36,6 +45,7 @@ const Navbar = () => {
               <Link
                 key={link.path}
                 href={link.path}
+                onClick={link.path === "/" ? scrollHomeToTop : undefined}
                 className={`rounded-md px-3 py-2 text-xs font-extrabold uppercase tracking-wide transition-colors ${
                   pathname === link.path
                     ? "text-gold"
@@ -94,7 +104,10 @@ const Navbar = () => {
               <Link
                 key={link.path}
                 href={link.path}
-                onClick={() => setIsOpen(false)}
+                onClick={(event) => {
+                  setIsOpen(false);
+                  if (link.path === "/") scrollHomeToTop(event);
+                }}
                 className={`block rounded-md px-3 py-2 text-sm font-bold uppercase tracking-wide transition-colors ${
                   pathname === link.path
                     ? "text-gold bg-white/5"

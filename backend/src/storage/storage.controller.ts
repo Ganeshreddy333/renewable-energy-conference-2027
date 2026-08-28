@@ -1,22 +1,35 @@
-import { Body, Controller, Delete, Get, NotFoundException, Param, Post, Res, UploadedFile, UseInterceptors } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Delete, Get, NotFoundException, Param, Post, Res, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { basename, dirname } from 'path';
 import type { Response } from 'express';
 import { CloudinaryService } from './cloudinary.service';
+import { AdminDataGuard } from '../data/admin-data.guard';
+
+const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
+const ALLOWED_UPLOAD_TYPES = new Set([
+  'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'text/plain',
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+]);
 
 @Controller('storage')
 export class StorageController {
   constructor(private readonly cloudinaryService: CloudinaryService) {}
 
   @Post(':bucket/upload')
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: MAX_UPLOAD_BYTES, files: 1 } }))
   async upload(
     @Param('bucket') bucket: string,
     @Body('path') path: string,
     @UploadedFile() file: any,
   ) {
     if (!file) return { error: 'No file uploaded' };
-    if (!bucket) return { error: 'No bucket specified' };
+    if (bucket !== 'abstract-assets') throw new BadRequestException('Unsupported storage bucket');
+    if (!ALLOWED_UPLOAD_TYPES.has(file.mimetype)) throw new BadRequestException('Unsupported file type');
 
     try {
       const relativePath = String(path || file.originalname).replace(/^\/+/, '');
@@ -60,6 +73,7 @@ export class StorageController {
   }
 
   @Delete(':bucket/:publicId')
+  @UseGuards(AdminDataGuard)
   async delete(@Param('bucket') bucket: string, @Param('publicId') publicId: string) {
     try {
       await this.cloudinaryService.deleteFile(`${bucket}/${publicId}`);

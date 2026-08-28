@@ -1,12 +1,13 @@
 // Entry point for NestJS application
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
-import express, { Request, Response } from 'express';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  // `rawBody` preserves the exact bytes providers signed. Do not add a second
+  // JSON parser here: it would discard that buffer before webhook verification.
+  const app = await NestFactory.create(AppModule, { rawBody: true });
 
   app.use(
     helmet({
@@ -33,8 +34,6 @@ async function bootstrap() {
     maxAge: 600,
   });
 
-  app.use(express.json({ limit: '1mb' }));
-
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
@@ -45,10 +44,6 @@ async function bootstrap() {
       },
     }),
   );
-
-  app.use('/health', (req: Request, res: Response) => {
-    res.json({ status: 'ok', timestamp: new Date().toISOString() });
-  });
 
   // Hosting providers such as Render supply PORT; local development can use API_PORT.
   const port = Number(process.env.PORT || process.env.API_PORT || 3001);
