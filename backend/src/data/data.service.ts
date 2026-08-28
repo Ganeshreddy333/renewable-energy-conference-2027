@@ -412,7 +412,7 @@ export class DataService {
     const doc = new PDFDocument({ size: 'A4', margin: 48 });
     const chunks: Buffer[] = [];
 
-    doc.on('data', (chunk) => chunks.push(Buffer.from(chunk)));
+    doc.on('data', (chunk: Buffer) => chunks.push(chunk));
     doc.on('end', () => undefined);
 
     doc.fontSize(22).text('Conference Registration Receipt', { align: 'center' });
@@ -433,7 +433,7 @@ export class DataService {
 
     const pdfBuffer = await new Promise<Buffer>((resolve, reject) => {
       const bufferChunks: Buffer[] = [];
-      doc.on('data', (chunk) => bufferChunks.push(Buffer.from(chunk)));
+      doc.on('data', (chunk: Buffer) => bufferChunks.push(chunk));
       doc.on('end', () => resolve(Buffer.concat(bufferChunks)));
       doc.on('error', reject);
     });
