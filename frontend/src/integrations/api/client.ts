@@ -5,7 +5,13 @@ type AuthUser = { id: string; email?: string; user_metadata?: Record<string, unk
 type AuthSession = { access_token: string; user: AuthUser };
 type Order = { column: string; ascending?: boolean };
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+const getApiBaseUrl = () => {
+  const configured = process.env.NEXT_PUBLIC_API_URL?.trim();
+  const normalized = configured && configured !== "/" ? configured.replace(/\/+$/, "") : "http://localhost:3001";
+  return normalized;
+};
+
+const API_BASE_URL = getApiBaseUrl();
 const AUTH_KEY = "localAuthSession";
 const authListeners = new Set<(event: string, session: AuthSession | null) => void>();
 

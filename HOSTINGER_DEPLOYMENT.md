@@ -11,6 +11,24 @@ Use two Hostinger Node.js applications on the same domain: the frontend on the m
 
 Push the contents of this directory to GitHub. Do not commit `.env` files, `node_modules`, `.next`, `dist`, local uploads, or database credentials. The root `.gitignore` already excludes them.
 
+## SSH setup for Hostinger
+
+On Hostinger SSH, `npm` is often not on the PATH until the Node environment is loaded. Run this before any `npm` command:
+
+```bash
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+nvm use --lts
+```
+
+If the shell still cannot find `node` or `npm`, source the project helper script:
+
+```bash
+bash /path/to/project/scripts/hostinger-node-env.sh
+```
+
+This script loads the correct Node.js environment and verifies that both `node` and `npm` are available.
+
 ## Backend Node.js application
 
 Set the application root to `backend/` and configure:

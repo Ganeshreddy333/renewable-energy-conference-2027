@@ -20,6 +20,11 @@ type PaymentProviderStatus = {
   phonepe: { configured: boolean; mode: string };
 };
 
+const getApiBaseUrl = () => {
+  const configured = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001").trim();
+  return configured && configured !== "/" ? configured.replace(/\/+$/, "") : "http://localhost:3001";
+};
+
 const getAdminAuthHeaders = (): Record<string, string> => {
   try {
     const session = JSON.parse(window.localStorage.getItem("localAuthSession") || "null");
@@ -102,7 +107,7 @@ const AdminSubmissions = () => {
     setMessages(messagesResult.data || []);
 
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/functions/payment-provider-status`, {
+      const response = await fetch(`${getApiBaseUrl()}/functions/payment-provider-status`, {
         headers: getAdminAuthHeaders(),
       });
       if (response.ok) {
@@ -131,7 +136,7 @@ const AdminSubmissions = () => {
 
   const downloadReceipt = async (registrationId: string) => {
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/functions/receipt/${registrationId}`, {
+      const response = await fetch(`${getApiBaseUrl()}/functions/receipt/${registrationId}`, {
         headers: getAdminAuthHeaders(),
       });
       if (!response.ok) {

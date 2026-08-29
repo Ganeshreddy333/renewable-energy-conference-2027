@@ -31,9 +31,11 @@ export class PrismaService implements OnModuleInit, OnModuleDestroy {
         : process.env.MYSQL_SSL_CA?.replace(/\\n/g, '\n');
       const requiresSsl = sslMode === 'required' || Boolean(sslCa);
 
-      if (requiresSsl && !sslCa) {
-        throw new Error('MySQL SSL is required but MYSQL_SSL_CA_BASE64 or MYSQL_SSL_CA is not configured.');
-      }
+      const sslConfig = requiresSsl
+        ? (sslCa
+          ? { ca: sslCa, rejectUnauthorized: true }
+          : { rejectUnauthorized: false })
+        : undefined;
 
       const adapter = new PrismaMariaDb({
         host: databaseUrl.hostname,
@@ -43,7 +45,7 @@ export class PrismaService implements OnModuleInit, OnModuleDestroy {
         database: databaseUrl.pathname.replace(/^\//, ''),
         connectionLimit: 5,
         allowPublicKeyRetrieval: isLocalDatabase,
-        ...(requiresSsl ? { ssl: { ca: sslCa, rejectUnauthorized: true } } : {}),
+        ...(sslConfig ? { ssl: sslConfig } : {}),
       });
       this.client = new PrismaClient({ adapter });
       Object.assign(this, this.client);
