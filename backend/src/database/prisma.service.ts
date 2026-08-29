@@ -25,6 +25,7 @@ export class PrismaService implements OnModuleInit, OnModuleDestroy {
     try {
       const databaseUrl = new URL(url!);
       const isLocalDatabase = ['localhost', '127.0.0.1'].includes(databaseUrl.hostname);
+      const socketPath = databaseUrl.searchParams.get('socket') || undefined;
       const sslMode = databaseUrl.searchParams.get('ssl-mode')?.toLowerCase();
       const sslCa = process.env.MYSQL_SSL_CA_BASE64
         ? Buffer.from(process.env.MYSQL_SSL_CA_BASE64, 'base64').toString('utf8')
@@ -42,9 +43,9 @@ export class PrismaService implements OnModuleInit, OnModuleDestroy {
         port: Number(databaseUrl.port) || 3306,
         user: decodeURIComponent(databaseUrl.username),
         password: decodeURIComponent(databaseUrl.password),
-        database: databaseUrl.pathname.replace(/^\//, ''),
+        database: decodeURIComponent(databaseUrl.pathname.replace(/^\//, '')),
         connectionLimit: 5,
-        allowPublicKeyRetrieval: isLocalDatabase,
+        ...(socketPath ? { socketPath } : { allowPublicKeyRetrieval: isLocalDatabase }),
         ...(sslConfig ? { ssl: sslConfig } : {}),
       });
       this.client = new PrismaClient({ adapter });
