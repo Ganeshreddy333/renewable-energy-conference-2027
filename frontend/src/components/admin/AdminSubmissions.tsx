@@ -7,7 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Download, ExternalLink } from "lucide-react";
+import { Download, ExternalLink, Trash2 } from "lucide-react";
 
 type RegistrationIntent = Tables<"registration_intents">;
 type AbstractSubmission = Tables<"abstract_submissions">;
@@ -120,18 +120,29 @@ const AdminSubmissions = () => {
   }, [toast]);
 
   const openStoredFile = async (path: string) => {
-    const { data, error } = await apiClient.storage.from("abstract-assets").createSignedUrl(path, 60 * 10);
-
-    if (error || !data?.signedUrl) {
+    try {
+      const response = await fetch(`${getApiBaseUrl()}/storage/abstract-assets/${path.replace(/^abstract-assets\//, "").split("/").map(encodeURIComponent).join("/")}`, {
+        headers: getAdminAuthHeaders(),
+      });
+      const payload = await response.json();
+      if (!response.ok || !payload?.url) throw new Error(payload?.message || "No download URL was created.");
+      const fileResponse = await fetch(payload.url.startsWith("http") ? payload.url : `${getApiBaseUrl()}${payload.url}`, {
+        headers: payload.url.startsWith("http") ? undefined : getAdminAuthHeaders(),
+      });
+      if (!fileResponse.ok) throw new Error("The file could not be downloaded.");
+      const url = URL.createObjectURL(await fileResponse.blob());
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = path.split("/").pop() || "abstract-file";
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (error) {
       toast({
-        title: "Could not open file",
-        description: error?.message || "No download URL was created.",
+        title: "Could not download file",
+        description: error instanceof Error ? error.message : "The file could not be downloaded.",
         variant: "destructive",
       });
-      return;
     }
-
-    window.open(data.signedUrl, "_blank", "noopener,noreferrer");
   };
 
   const downloadReceipt = async (registrationId: string) => {
@@ -190,6 +201,17 @@ const AdminSubmissions = () => {
     }
 
     setUpdatingAbstractId(null);
+  };
+
+  const deleteRecord = async (table: "abstract_submissions" | "contact_messages", id: string) => {
+    const { error } = await apiClient.from(table).delete().eq("id", id);
+    if (error) {
+      toast({ title: "Could not delete record", description: error.message, variant: "destructive" });
+      return;
+    }
+    if (table === "abstract_submissions") setAbstracts((current) => current.filter((item) => item.id !== id));
+    else setMessages((current) => current.filter((item) => item.id !== id));
+    toast({ title: "Record deleted" });
   };
 
   const registrationCounts = registrations.reduce(
@@ -377,6 +399,7 @@ const AdminSubmissions = () => {
                             <div className="text-sm text-muted-foreground">{item.country || "-"}</div>
                           </TableCell>
                           <TableCell className="min-w-[280px] align-top">
+                            <div className="text-sm text-teal">{item.session || "Session not recorded"}</div>
                             <div className="font-medium">{item.abstract_title || "-"}</div>
                             <div className="mt-1 text-sm text-muted-foreground">{item.keywords || "-"}</div>
                             <div className="mt-2 max-w-xl whitespace-pre-wrap text-sm text-muted-foreground">
@@ -446,6 +469,9 @@ const AdminSubmissions = () => {
                                 Reject
                               </Button>
                             </div>
+                            <Button type="button" size="sm" variant="outline" className="mt-2" onClick={() => deleteRecord("abstract_submissions", item.id)}>
+                              <Trash2 className="mr-1 h-3 w-3" /> Delete
+                            </Button>
                           </TableCell>
                           <TableCell className="hidden lg:table-cell align-top">{formatDate(item.created_at)}</TableCell>
                         </TableRow>
@@ -466,12 +492,13 @@ const AdminSubmissions = () => {
                     <TableHead>Subject</TableHead>
                     <TableHead className="hidden md:table-cell">Message</TableHead>
                     <TableHead className="hidden lg:table-cell">Created</TableHead>
+                    <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {messages.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
+                      <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
                         No contact messages yet.
                       </TableCell>
                     </TableRow>
@@ -485,6 +512,11 @@ const AdminSubmissions = () => {
                         <TableCell>{item.subject}</TableCell>
                         <TableCell className="hidden md:table-cell max-w-[380px] truncate">{item.message}</TableCell>
                         <TableCell className="hidden lg:table-cell">{formatDate(item.created_at)}</TableCell>
+                        <TableCell>
+                          <Button type="button" size="sm" variant="outline" onClick={() => deleteRecord("contact_messages", item.id)}>
+                            <Trash2 className="mr-1 h-3 w-3" /> Delete
+                          </Button>
+                        </TableCell>
                       </TableRow>
                     ))
                   )}

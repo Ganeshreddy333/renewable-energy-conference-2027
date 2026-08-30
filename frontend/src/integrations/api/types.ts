@@ -25,6 +25,7 @@ export type Database = {
           phone: string | null
           presentation_type: string | null
           status: string
+          session: string | null
           supporting_text: string | null
           voice_file_name: string | null
           voice_file_path: string | null
@@ -45,6 +46,7 @@ export type Database = {
           phone?: string | null
           presentation_type?: string | null
           status?: string
+          session?: string | null
           supporting_text?: string | null
           voice_file_name?: string | null
           voice_file_path?: string | null
@@ -65,6 +67,7 @@ export type Database = {
           phone?: string | null
           presentation_type?: string | null
           status?: string
+          session?: string | null
           supporting_text?: string | null
           voice_file_name?: string | null
           voice_file_path?: string | null

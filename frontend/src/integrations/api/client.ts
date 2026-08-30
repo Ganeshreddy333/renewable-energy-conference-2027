@@ -203,7 +203,10 @@ export const apiClient = {
       },
       createSignedUrl: async (path: string, ..._args: unknown[]) => {
         try {
-          const response = await fetch(`${API_BASE_URL}/storage/${bucket}/${encodeStoragePath(bucket, path)}`);
+          const session = readSession();
+          const response = await fetch(`${API_BASE_URL}/storage/${bucket}/${encodeStoragePath(bucket, path)}`, {
+            headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {},
+          });
           const payload = await response.json().catch(() => null);
           if (!response.ok || !payload?.url) {
             return { data: null, error: { message: payload?.message || "Could not create a download URL" } };

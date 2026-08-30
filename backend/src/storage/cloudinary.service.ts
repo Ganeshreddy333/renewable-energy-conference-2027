@@ -61,7 +61,7 @@ export class CloudinaryService {
       await fs.rm(this.localPath(publicId), { force: true });
       return;
     }
-    await cloudinary.uploader.destroy(publicId);
+    await cloudinary.uploader.destroy(publicId.replace(/\.[^/.]+$/, ''));
   }
 
   async getUrl(publicId: string): Promise<string> {

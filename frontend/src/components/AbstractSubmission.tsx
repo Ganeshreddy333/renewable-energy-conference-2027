@@ -250,9 +250,10 @@ const AbstractSubmission = () => {
     title: "Scientific Sessions",
     content: tracks.map((track) => `${track.title} | ${track.description}`).join("\n"),
   });
-  const availableTracks = splitLines(sessions.content).map((line) => ({
-    title: line.split("|")[0].trim(),
-  }));
+  const managedTracks = splitLines(sessions.content)
+    .map((line) => line.split("|")[0].trim())
+    .filter((title) => title && title !== "Browse the conference's scientific sessions.");
+  const availableTracks = (managedTracks.length ? managedTracks : tracks.map((track) => track.title)).map((title) => ({ title }));
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [activeSection, setActiveSection] = useState("");
   const [formData, setFormData] = useState({
@@ -408,6 +409,7 @@ const AbstractSubmission = () => {
         country: (formData.country === "Other" ? otherCountry : formData.country).trim(),
         presentation_type: formData.presentationType.trim(),
         abstract_title: formData.session.trim(),
+        session: formData.session.trim(),
         abstract_text: "Submitted as uploaded document.",
         file_paths: storedFiles.length > 0 ? storedFiles : null,
         status: "submitted",

@@ -3,6 +3,7 @@ import { randomUUID, createHmac, timingSafeEqual } from 'crypto';
 import PDFDocument from 'pdfkit';
 import { PrismaService } from '../database/prisma.service';
 import { EmailService } from '../email/email.service';
+import { CloudinaryService } from '../storage/cloudinary.service';
 
 type Sort = { column: string; ascending?: boolean };
 
@@ -44,8 +45,8 @@ const TABLES: Record<string, TableConfig> = {
     defaultOrder: [{ column: 'created_at', ascending: false }],
   },
   abstract_submissions: {
-    columns: ['id', 'full_name', 'email', 'phone', 'affiliation', 'country', 'abstract_title', 'abstract_text', 'presentation_type', 'keywords', 'supporting_text', 'drive_url', 'website_url', 'file_paths', 'voice_file_name', 'voice_file_path', 'status', 'created_at'],
-    writable: ['full_name', 'email', 'phone', 'affiliation', 'country', 'abstract_title', 'abstract_text', 'presentation_type', 'keywords', 'supporting_text', 'drive_url', 'website_url', 'file_paths', 'voice_file_name', 'voice_file_path', 'status'],
+    columns: ['id', 'full_name', 'email', 'phone', 'affiliation', 'country', 'session', 'abstract_title', 'abstract_text', 'presentation_type', 'keywords', 'supporting_text', 'drive_url', 'website_url', 'file_paths', 'voice_file_name', 'voice_file_path', 'status', 'created_at'],
+    writable: ['full_name', 'email', 'phone', 'affiliation', 'country', 'session', 'abstract_title', 'abstract_text', 'presentation_type', 'keywords', 'supporting_text', 'drive_url', 'website_url', 'file_paths', 'voice_file_name', 'voice_file_path', 'status'],
     defaultOrder: [{ column: 'created_at', ascending: false }],
   },
   registration_intents: {
@@ -72,6 +73,7 @@ export class DataService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly emailService: EmailService,
+    private readonly cloudinaryService: CloudinaryService,
   ) {}
 
   async list(table: string, filters: Record<string, unknown> = {}, order: Sort[] = []) {
@@ -214,6 +216,21 @@ export class DataService {
 
   async delete(table: string, id: string) {
     this.getTable(table);
+    if (table === 'abstract_submissions') {
+      const rows = await this.list(table, { id }) as Array<Record<string, unknown>>;
+      const submission = rows[0];
+      if (submission) {
+        let storedFiles: unknown = submission.file_paths;
+        if (typeof storedFiles === 'string') {
+          try { storedFiles = JSON.parse(storedFiles); } catch { storedFiles = []; }
+        }
+        const paths = [
+          ...(Array.isArray(storedFiles) ? storedFiles.map((file: any) => typeof file === 'string' ? file : file?.path) : []),
+          submission.voice_file_path,
+        ].filter((path): path is string => typeof path === 'string' && path.length > 0);
+        await Promise.all(paths.map((path) => this.cloudinaryService.deleteFile(`abstract-assets/${path.replace(/^abstract-assets\//, '')}`)));
+      }
+    }
     await (this.prisma as any).$executeRawUnsafe(`DELETE FROM \`${table}\` WHERE \`id\` = ?`, id);
     return { id };
   }

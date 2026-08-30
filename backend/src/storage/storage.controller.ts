@@ -54,6 +54,7 @@ export class StorageController {
   }
 
   @Get('local/:bucket/*path')
+  @UseGuards(AdminDataGuard)
   async downloadLocal(@Param('bucket') bucket: string, @Param() params: any, @Res() response: Response) {
     const publicId = Array.isArray(params.path) ? params.path.join('/') : params.path;
     try {
@@ -66,6 +67,7 @@ export class StorageController {
   }
 
   @Get(':bucket/*path')
+  @UseGuards(AdminDataGuard)
   async download(@Param('bucket') bucket: string, @Param() params: any) {
     const publicId = Array.isArray(params.path) ? params.path.join('/') : params.path;
     const url = await this.cloudinaryService.getUrl(`${bucket}/${publicId}`);

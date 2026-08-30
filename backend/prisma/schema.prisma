@@ -88,6 +88,7 @@ model AbstractSubmission {
   description String   @db.Text
   authorId    String
   author      User     @relation(fields: [authorId], references: [id])
+  session     String?
   status      String   @default("pending") // "pending", "approved", "rejected"
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
