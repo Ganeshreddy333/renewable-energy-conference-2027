@@ -121,20 +121,34 @@ const AdminSubmissions = () => {
 
   const openStoredFile = async (path: string) => {
     try {
-      const response = await fetch(`${getApiBaseUrl()}/storage/abstract-assets/${path.replace(/^abstract-assets\//, "").split("/").map(encodeURIComponent).join("/")}`, {
+      const normalizedPath = path
+        .replace(/^.*\/storage\/abstract-assets\//, "")
+        .replace(/^abstract-assets\//, "")
+        .replace(/^\/+/, "")
+        .split("/")
+        .map((segment) => encodeURIComponent(segment))
+        .join("/");
+
+      const downloadUrl = `${getApiBaseUrl()}/storage/abstract-assets/${normalizedPath}`;
+      const response = await fetch(downloadUrl, {
         headers: getAdminAuthHeaders(),
       });
-      const payload = await response.json();
-      if (!response.ok || !payload?.url) throw new Error(payload?.message || "No download URL was created.");
-      const fileResponse = await fetch(payload.url.startsWith("http") ? payload.url : `${getApiBaseUrl()}${payload.url}`, {
-        headers: payload.url.startsWith("http") ? undefined : getAdminAuthHeaders(),
-      });
-      if (!fileResponse.ok) throw new Error("The file could not be downloaded.");
-      const url = URL.createObjectURL(await fileResponse.blob());
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.message || "The file could not be downloaded.");
+      }
+
+      const blob = await response.blob();
+      if (!blob.size) throw new Error("The downloaded file is empty.");
+
+      const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
       link.download = path.split("/").pop() || "abstract-file";
+      document.body.appendChild(link);
       link.click();
+      link.remove();
       URL.revokeObjectURL(url);
     } catch (error) {
       toast({
