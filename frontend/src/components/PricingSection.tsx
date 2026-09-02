@@ -300,6 +300,15 @@ const PricingSection = () => {
     }
   }, [availableCategories, selectedCategoryKey]);
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const couponFromUrl = params.get("coupon")?.trim();
+    if (!couponFromUrl) return;
+
+    setCouponCode(couponFromUrl);
+    void validateCoupon(couponFromUrl);
+  }, []);
+
   const updateFormValue = (field: keyof FormValues, value: string) => {
     setFormValues((current) => ({ ...current, [field]: value }));
   };
@@ -758,9 +767,12 @@ const PricingSection = () => {
                 </Button>
               </div>
               {appliedCoupon ? (
-                <p className="mt-2 text-sm font-medium text-teal">
-                  {appliedCoupon.code} applied for {appliedCoupon.discountPercent}% discount.
-                </p>
+                <div className="mt-3 rounded-md border border-teal/30 bg-teal/10 p-3 text-sm text-teal-900">
+                  <p className="font-semibold">Coupon {appliedCoupon.code} applied</p>
+                  <p className="mt-1">Original Price: {formatUsd(subtotalPrice)}</p>
+                  <p>Discount: -{formatUsd(discount)}</p>
+                  <p>Final Price: {formatUsd(totalRegistrationPrice)}</p>
+                </div>
               ) : null}
 
               <div className="mt-6 rounded-md border border-border bg-card p-4">

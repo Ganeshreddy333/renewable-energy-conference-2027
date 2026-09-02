@@ -39,7 +39,13 @@ const AdminCoupons = () => {
   const [form, setForm] = useState<CouponFormState>(emptyCoupon);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
+  const [generatedCoupon, setGeneratedCoupon] = useState<{ code: string; discount: string; link: string } | null>(null);
   const { toast } = useToast();
+
+  const buildRegistrationLink = (code: string) => {
+    const baseUrl = (process.env.NEXT_PUBLIC_SITE_URL || window.location.origin || "https://renewableenergy2027.com").replace(/\/$/, "");
+    return `${baseUrl}/registration?coupon=${encodeURIComponent(code.trim().toUpperCase())}`;
+  };
 
   const fetchCoupons = async () => {
     const { data } = await apiClient.from("coupon_codes").select("*").order("created_at", { ascending: false });
@@ -71,20 +77,32 @@ const AdminCoupons = () => {
       valid_until: form.valid_until || null,
     };
 
+    const createdCode = payload.code || form.code.toUpperCase();
+    const discountText = form.discountType === "percent" ? `${form.discountValue}%` : `$${form.discountValue}`;
+    const nextLink = buildRegistrationLink(createdCode);
+
     if (editingId) {
       const { error } = await apiClient.from("coupon_codes").update(payload).eq("id", editingId);
       if (error) {
         toast({ title: "Error", description: error.message, variant: "destructive" });
         return;
       }
-      toast({ title: "Coupon updated!" });
+      setGeneratedCoupon({ code: createdCode, discount: discountText, link: nextLink });
+      toast({
+        title: "Coupon updated",
+        description: `Coupon ${createdCode} is ready for registration links.`,
+      });
     } else {
       const { error } = await apiClient.from("coupon_codes").insert(payload);
       if (error) {
         toast({ title: "Error", description: error.message, variant: "destructive" });
         return;
       }
-      toast({ title: "Coupon created!" });
+      setGeneratedCoupon({ code: createdCode, discount: discountText, link: nextLink });
+      toast({
+        title: "Coupon created successfully",
+        description: `Coupon: ${createdCode}\nDiscount: ${discountText}\nRegistration Link: ${nextLink}`,
+      });
     }
 
     setForm(emptyCoupon);
@@ -187,6 +205,35 @@ const AdminCoupons = () => {
         </Dialog>
       </CardHeader>
       <CardContent>
+        {generatedCoupon ? (
+          <div className="mb-4 rounded-md border border-green-200 bg-green-50 p-4 text-sm text-green-900">
+            <p className="font-semibold">Coupon created successfully</p>
+            <p className="mt-1">Coupon: {generatedCoupon.code}</p>
+            <p>Discount: {generatedCoupon.discount}</p>
+            <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center">
+              <span className="font-medium">Registration Link:</span>
+              <a href={generatedCoupon.link} target="_blank" rel="noreferrer" className="break-all text-blue-700 underline">
+                {generatedCoupon.link}
+              </a>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={async () => {
+                  try {
+                    await navigator.clipboard.writeText(generatedCoupon.link);
+                    toast({ title: "Link copied", description: "Registration link copied to clipboard." });
+                  } catch {
+                    toast({ title: "Copy failed", description: "Could not copy the registration link automatically.", variant: "destructive" });
+                  }
+                }}
+              >
+                Copy Link
+              </Button>
+            </div>
+          </div>
+        ) : null}
+
         {coupons.length === 0 ? (
           <p className="text-muted-foreground text-center py-8">No coupons yet.</p>
         ) : (
