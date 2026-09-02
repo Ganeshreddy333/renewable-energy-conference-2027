@@ -6,11 +6,17 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/hooks/useAuth";
 import ScrollToTop from "@/components/ScrollToTop";
 
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://example.com";
+
 export const metadata: Metadata = {
+  metadataBase: new URL(siteUrl),
   title: "Renewable Energy Conference 2027",
   description: "A global forum for renewable energy innovation and collaboration",
   icons: {
     icon: "/favicon.ico",
+  },
+  alternates: {
+    canonical: "/",
   },
 };
 
