@@ -47,6 +47,16 @@ const AdminCoupons = () => {
     return `${baseUrl}/registration?coupon=${encodeURIComponent(code.trim().toUpperCase())}`;
   };
 
+  const copyRegistrationLink = async (code: string) => {
+    const link = buildRegistrationLink(code);
+    try {
+      await navigator.clipboard.writeText(link);
+      toast({ title: "Link copied", description: "Registration link copied to clipboard." });
+    } catch {
+      toast({ title: "Copy failed", description: "Could not copy the registration link automatically.", variant: "destructive" });
+    }
+  };
+
   const fetchCoupons = async () => {
     const { data } = await apiClient.from("coupon_codes").select("*").order("created_at", { ascending: false });
     if (data) setCoupons(data);
@@ -219,14 +229,7 @@ const AdminCoupons = () => {
                 type="button"
                 size="sm"
                 variant="outline"
-                onClick={async () => {
-                  try {
-                    await navigator.clipboard.writeText(generatedCoupon.link);
-                    toast({ title: "Link copied", description: "Registration link copied to clipboard." });
-                  } catch {
-                    toast({ title: "Copy failed", description: "Could not copy the registration link automatically.", variant: "destructive" });
-                  }
-                }}
+                onClick={() => copyRegistrationLink(generatedCoupon.code)}
               >
                 Copy Link
               </Button>
@@ -243,6 +246,7 @@ const AdminCoupons = () => {
                 <TableRow>
                   <TableHead>Code</TableHead>
                   <TableHead>Discount</TableHead>
+                  <TableHead className="min-w-[280px]">Registration Link</TableHead>
                   <TableHead className="hidden md:table-cell">Uses</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Actions</TableHead>
@@ -254,6 +258,22 @@ const AdminCoupons = () => {
                     <TableCell className="font-mono font-bold">{c.code}</TableCell>
                     <TableCell>
                       {c.discount_percent ? `${c.discount_percent}%` : c.discount_amount ? `$${c.discount_amount}` : "-"}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex min-w-[260px] items-center gap-2">
+                        <a
+                          href={buildRegistrationLink(c.code)}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="max-w-[220px] truncate text-xs text-blue-700 underline"
+                          title={buildRegistrationLink(c.code)}
+                        >
+                          {buildRegistrationLink(c.code)}
+                        </a>
+                        <Button type="button" size="sm" variant="outline" onClick={() => copyRegistrationLink(c.code)}>
+                          Copy
+                        </Button>
+                      </div>
                     </TableCell>
                     <TableCell className="hidden md:table-cell">{c.current_uses}/{c.max_uses || "Unlimited"}</TableCell>
                     <TableCell>
