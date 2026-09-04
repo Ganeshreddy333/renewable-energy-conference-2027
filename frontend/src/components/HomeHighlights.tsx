@@ -50,27 +50,27 @@ const HomeHighlights = () => {
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_15%_20%,rgba(16,185,129,0.18),transparent_32%),radial-gradient(circle_at_85%_70%,rgba(234,179,8,0.20),transparent_28%)]" />
         <div className="container relative mx-auto px-4">
           <div>
-              <p className="section-kicker mb-2">Welcome</p>
-              <h2 className="mb-5 font-display text-3xl font-black uppercase leading-tight text-foreground md:text-5xl">
-                {welcome.title}
-              </h2>
-              <div className="space-y-4 text-base leading-relaxed text-muted-foreground">
-                {splitParagraphs(welcome.content).map((paragraph) => (
-                  <p key={paragraph}>{paragraph}</p>
-                ))}
-              </div>
+            <p className="section-kicker mb-2">Welcome</p>
+            <h2 className="mb-5 font-display text-3xl font-black uppercase leading-tight text-foreground md:text-5xl">
+              {welcome.title}
+            </h2>
+            <div className="space-y-4 text-base leading-relaxed text-muted-foreground">
+              {splitParagraphs(welcome.content).map((paragraph) => (
+                <p key={paragraph}>{paragraph}</p>
+              ))}
+            </div>
 
-              <div className="mx-auto mt-8 grid max-w-4xl gap-4 md:grid-cols-2">
-                {managedProfiles.map((item) => (
-                  <div key={item.title} className="rounded-md border border-white/60 bg-white/90 p-5 shadow-xl shadow-teal/10 backdrop-blur">
-                    <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-md bg-teal/10">
-                      <item.icon className="text-teal" size={24} />
-                    </div>
-                    <h3 className="mb-2 font-display text-lg font-black text-card-foreground">{item.title}</h3>
-                    <p className="text-sm leading-relaxed text-muted-foreground">{item.text}</p>
+            <div className="mx-auto mt-8 grid max-w-4xl gap-4 md:grid-cols-2">
+              {managedProfiles.map((item) => (
+                <div key={item.title} className="rounded-md border border-white/60 bg-white/90 p-5 shadow-xl shadow-teal/10 backdrop-blur">
+                  <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-md bg-teal/10">
+                    <item.icon className="text-teal" size={24} />
                   </div>
-                ))}
-              </div>
+                  <h3 className="mb-2 font-display text-lg font-black text-card-foreground">{item.title}</h3>
+                  <p className="text-sm leading-relaxed text-muted-foreground">{item.text}</p>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </section>

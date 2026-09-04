@@ -1,8 +1,8 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Menu, X, Zap } from "lucide-react";
+import { ChevronDown, Menu, X, Zap } from "lucide-react";
 import { useWebsiteContent } from "@/hooks/useWebsiteContent";
 
 const navLinks = [
@@ -11,8 +11,28 @@ const navLinks = [
   { label: "Speakers", path: "/speakers" },
 ];
 
+const informationItems = [
+  ["speaker-guidelines", "Speaker Guidelines"],
+  ["publications-indexing", "Publications & Indexing"],
+  ["awards-excellence", "Awards & Excellence"],
+  ["registration-pricing", "Registration Pricing"],
+  ["registration-includes", "Registration Includes"],
+  ["cancellation-refund-policy", "Cancellation & Refund Policy"],
+  ["terms-conditions", "Terms & Conditions"],
+  ["frequently-asked-questions", "Frequently Asked Questions"],
+  ["contact-us", "Contact Us"],
+];
+
+const abstractItems = [
+  ["submit-abstract", "Submit Abstract"],
+  ["scientific-sessions", "Scientific Sessions"],
+];
+
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
+  const [openMenu, setOpenMenu] = useState<"information" | "abstract" | null>(null);
+  const [mobileMenu, setMobileMenu] = useState<"information" | "abstract" | null>(null);
+  const navRef = useRef<HTMLElement>(null);
   const pathname = usePathname();
   const { getSection } = useWebsiteContent();
   const brand = getSection("site_brand", { title: "Renewable Energy", content: "Conference 2027" });
@@ -26,8 +46,48 @@ const Navbar = () => {
     window.scrollTo({ top: 0, left: 0, behavior: "smooth" });
   };
 
+  useEffect(() => {
+    const closeDropdown = (event: MouseEvent) => {
+      if (navRef.current && !navRef.current.contains(event.target as Node)) {
+        setOpenMenu(null);
+      }
+    };
+
+    document.addEventListener("mousedown", closeDropdown);
+    return () => document.removeEventListener("mousedown", closeDropdown);
+  }, []);
+
+  const menuLinkClass = (active: boolean) =>
+    `rounded-md px-3 py-2 text-xs font-extrabold uppercase tracking-wide transition-colors ${
+      active ? "text-gold" : "text-hero-foreground/80 hover:text-gold"
+    }`;
+
+  const handleSubpageClick = (event: React.MouseEvent<HTMLAnchorElement>, path: string, id: string) => {
+    setOpenMenu(null);
+
+    if (pathname === path) {
+      event.preventDefault();
+      window.location.hash = id;
+    }
+  };
+
+  const dropdown = (items: string[][], prefix: string) => (
+    <div className="absolute left-0 top-full z-50 mt-2 w-64 rounded-md bg-white p-2 shadow-xl shadow-black/20">
+      {items.map(([id, label]) => (
+        <Link
+          key={id}
+          href={`/${prefix}#${id}`}
+          onClick={(event) => handleSubpageClick(event, `/${prefix}`, id)}
+          className="block rounded-sm px-4 py-3 text-sm font-semibold text-slate-800 transition-colors hover:bg-teal/10 hover:text-teal"
+        >
+          {label}
+        </Link>
+      ))}
+    </div>
+  );
+
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 border-b border-white/10 bg-hero-bg/95 shadow-lg shadow-black/10 backdrop-blur-md">
+    <nav ref={navRef} className="fixed top-0 left-0 right-0 z-50 border-b border-white/10 bg-hero-bg/95 shadow-lg shadow-black/10 backdrop-blur-md">
       <div className="container mx-auto px-4">
         <div className="flex h-16 items-center justify-between md:h-20">
           <Link href="/" className="flex items-center gap-3">
@@ -55,26 +115,28 @@ const Navbar = () => {
                 {link.label}
               </Link>
             ))}
-            <Link
-              href="/information"
-              className={`rounded-md px-3 py-2 text-xs font-extrabold uppercase tracking-wide transition-colors ${
-                pathname === "/information"
-                  ? "text-gold"
-                  : "text-hero-foreground/80 hover:text-gold"
-              }`}
-            >
-              Information
-            </Link>
-            <Link
-              href="/abstract-submission"
-              className={`rounded-md px-3 py-2 text-xs font-extrabold uppercase tracking-wide transition-colors ${
-                pathname === "/abstract-submission"
-                  ? "text-gold"
-                  : "text-hero-foreground/80 hover:text-gold"
-              }`}
-            >
-              Abstract Submission
-            </Link>
+            <div className="relative" onMouseEnter={() => setOpenMenu("information")}>
+              <button
+                type="button"
+                aria-expanded={openMenu === "information"}
+                onClick={() => setOpenMenu(openMenu === "information" ? null : "information")}
+                className={menuLinkClass(pathname === "/information")}
+              >
+                Information <ChevronDown size={13} className={`ml-1 inline transition-transform ${openMenu === "information" ? "rotate-180" : ""}`} />
+              </button>
+              {openMenu === "information" ? dropdown(informationItems, "information") : null}
+            </div>
+            <div className="relative" onMouseEnter={() => setOpenMenu("abstract")}>
+              <button
+                type="button"
+                aria-expanded={openMenu === "abstract"}
+                onClick={() => setOpenMenu(openMenu === "abstract" ? null : "abstract")}
+                className={menuLinkClass(pathname === "/abstract-submission")}
+              >
+                Abstract Submission <ChevronDown size={13} className={`ml-1 inline transition-transform ${openMenu === "abstract" ? "rotate-180" : ""}`} />
+              </button>
+              {openMenu === "abstract" ? dropdown(abstractItems, "abstract-submission") : null}
+            </div>
             <Link
               href="/registration"
               className={`rounded-md px-3 py-2 text-xs font-extrabold uppercase tracking-wide transition-colors ${
@@ -117,28 +179,44 @@ const Navbar = () => {
                 {link.label}
               </Link>
             ))}
-            <Link
-              href="/information"
-              onClick={() => setIsOpen(false)}
-              className={`block rounded-md px-3 py-2 text-sm font-bold uppercase tracking-wide transition-colors ${
-                pathname === "/information"
-                  ? "text-gold bg-white/5"
-                  : "text-hero-foreground/80 hover:text-gold hover:bg-white/5"
+            <button
+              type="button"
+              aria-expanded={mobileMenu === "information"}
+              onClick={() => setMobileMenu(mobileMenu === "information" ? null : "information")}
+              className={`flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-sm font-bold uppercase tracking-wide transition-colors ${
+                pathname === "/information" ? "text-gold bg-white/5" : "text-hero-foreground/80 hover:bg-white/5 hover:text-gold"
               }`}
             >
-              Information
-            </Link>
-            <Link
-              href="/abstract-submission"
-              onClick={() => setIsOpen(false)}
-              className={`block rounded-md px-3 py-2 text-sm font-bold uppercase tracking-wide transition-colors ${
-                pathname === "/abstract-submission"
-                  ? "text-gold bg-white/5"
-                  : "text-hero-foreground/80 hover:text-gold hover:bg-white/5"
+              Information <ChevronDown size={15} className={`transition-transform ${mobileMenu === "information" ? "rotate-180" : ""}`} />
+            </button>
+            {mobileMenu === "information" ? (
+              <div className="ml-3 border-l border-white/15 pl-2">
+                {informationItems.map(([id, label]) => (
+                  <Link key={id} href={`/information#${id}`} onClick={(event) => { setIsOpen(false); handleSubpageClick(event, "/information", id); }} className="block rounded-md px-3 py-2 text-sm text-hero-foreground/75 hover:bg-white/5 hover:text-gold">
+                    {label}
+                  </Link>
+                ))}
+              </div>
+            ) : null}
+            <button
+              type="button"
+              aria-expanded={mobileMenu === "abstract"}
+              onClick={() => setMobileMenu(mobileMenu === "abstract" ? null : "abstract")}
+              className={`flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-sm font-bold uppercase tracking-wide transition-colors ${
+                pathname === "/abstract-submission" ? "text-gold bg-white/5" : "text-hero-foreground/80 hover:bg-white/5 hover:text-gold"
               }`}
             >
-              Abstract Submission
-            </Link>
+              Abstract Submission <ChevronDown size={15} className={`transition-transform ${mobileMenu === "abstract" ? "rotate-180" : ""}`} />
+            </button>
+            {mobileMenu === "abstract" ? (
+              <div className="ml-3 border-l border-white/15 pl-2">
+                {abstractItems.map(([id, label]) => (
+                  <Link key={id} href={`/abstract-submission#${id}`} onClick={(event) => { setIsOpen(false); handleSubpageClick(event, "/abstract-submission", id); }} className="block rounded-md px-3 py-2 text-sm text-hero-foreground/75 hover:bg-white/5 hover:text-gold">
+                    {label}
+                  </Link>
+                ))}
+              </div>
+            ) : null}
             <Link
               href="/registration"
               onClick={() => setIsOpen(false)}

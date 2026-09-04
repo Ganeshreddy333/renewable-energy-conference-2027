@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Award, BookOpen, Globe2, GraduationCap, Lightbulb, Mic2, Network } from "lucide-react";
+import { Award, BookOpen, Globe2, GraduationCap, Lightbulb, Mic2, Network, Users, Zap } from "lucide-react";
 import { splitLines, splitParagraphs, useWebsiteContent } from "@/hooks/useWebsiteContent";
 
 const speakerBenefits = [
@@ -22,6 +22,13 @@ const scopeTopics = [
   "Green Buildings & Energy Efficiency",
   "Carbon Capture, Utilization & Storage (CCUS)",
   "Emerging Trends in Clean & Renewable Technologies",
+];
+
+const keyTopicStats = [
+  { icon: Zap, value: "300+", label: "Expert Speakers" },
+  { icon: Users, value: "100+", label: "Expected Delegates" },
+  { icon: Globe2, value: "30+", label: "Countries" },
+  { icon: Lightbulb, value: "30+", label: "Sessions" },
 ];
 
 const AboutSection = () => {
@@ -86,6 +93,21 @@ const AboutSection = () => {
               </motion.div>
             ))}
           </div>
+        </div>
+
+        <div className="mb-14 grid gap-4 rounded-md bg-hero-bg px-4 py-5 sm:grid-cols-2 lg:grid-cols-4">
+          {keyTopicStats.map((stat) => (
+            <div
+              key={stat.label}
+              className="rounded-md border border-white/70 bg-slate-50 px-4 py-5 text-center shadow-lg shadow-black/10"
+            >
+              <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-md bg-gold text-hero-bg">
+                <stat.icon size={25} strokeWidth={2.25} />
+              </div>
+              <p className="font-display text-3xl font-black leading-none text-red-600 md:text-4xl">{stat.value}</p>
+              <p className="mt-3 text-xs font-extrabold uppercase tracking-wide text-slate-800">{stat.label}</p>
+            </div>
+          ))}
         </div>
 
         <div className="conference-card p-8">

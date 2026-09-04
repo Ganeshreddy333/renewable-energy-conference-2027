@@ -4,7 +4,6 @@ import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import HeroSection from "@/components/HeroSection";
-import HomeHighlights from "@/components/HomeHighlights";
 import AboutSection from "@/components/AboutSection";
 import ImportantDates from "@/components/ImportantDates";
 import ScheduleSection from "@/components/ScheduleSection";
@@ -31,7 +30,6 @@ const IndexContent = () => {
       ) : null}
       <Navbar />
       <HeroSection />
-      <HomeHighlights />
       <AboutSection />
       <ImportantDates />
       <ScheduleSection />

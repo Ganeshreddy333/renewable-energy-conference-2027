@@ -110,10 +110,17 @@
 
   .hero-gradient {
     background:
-      linear-gradient(90deg, hsl(164 75% 9% / 0.94), hsl(164 60% 16% / 0.74), hsl(45 96% 50% / 0.16)),
-      url("https://images.unsplash.com/photo-1497435334941-8c899ee9e8e9?auto=format&fit=crop&w=2200&q=80");
+      linear-gradient(90deg, hsl(164 75% 9% / 0.2), hsl(164 60% 16% / 0.15) 48%, hsl(164 70% 10% / 0.06)),
+      url("/hero-renewable-energy.png");
     background-position: center;
-    background-size: cover;
+    background-size: 100% 100%;
+  }
+
+  @media (max-width: 767px) {
+    .hero-gradient {
+      background-position: center;
+      background-size: 100% 100%;
+    }
   }
 
   .gold-gradient {
@@ -145,11 +152,25 @@
     text-transform: uppercase;
   }
 
+  .hero-gradient h1 {
+    letter-spacing: -0.025em;
+  }
+
+  .hero-gradient p {
+    letter-spacing: 0.005em;
+  }
+
   .conference-card {
     border: 1px solid hsl(var(--border));
     border-radius: 0.5rem;
     background: hsl(var(--card));
     box-shadow: 0 18px 45px -34px hsl(var(--teal) / 0.45);
+  }
+
+  .conference-card h2,
+  .conference-card h3,
+  .conference-card h4 {
+    color: hsl(var(--card-foreground));
   }
 
   .expo-band {

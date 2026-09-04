@@ -12,7 +12,7 @@ import type { Tables, TablesInsert } from "@/integrations/api/types";
 type Content = Tables<"website_content">;
 
 const defaultSections: Array<TablesInsert<"website_content">> = [
-  { section_key: "hero_title", title: "Homepage Hero Title", content: "World Conference on Renewable Energy & Sustainable Energy" },
+  { section_key: "hero_title", title: "Homepage Hero Title", content: "WORLD CONFERENCE ON RENEWABLE ENERGY\n& SUSTAINABLE ENERGY" },
   { section_key: "hero_subtitle", title: "Homepage Hero Date Line", content: "March 3-4, 2027 | #22-28, V.V. Nagar, Chaitanyapuri, Hyderabad, Telangana 500060, India" },
   { section_key: "about_intro", title: "About Conference", content: "Renewable Energy - 2027 is a global forum for scientists, keynote speakers, industry pioneers, and policy leaders advancing low-carbon and sustainable energy futures." },
   { section_key: "home_welcome", title: "Homepage Welcome", content: "Welcome to Renewable Energy - 2027." },

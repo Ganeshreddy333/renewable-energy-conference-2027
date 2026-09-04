@@ -174,11 +174,6 @@ const Information = () => {
     [activeSection],
   );
 
-  const showInformationMenu = () => {
-    window.history.replaceState(null, "", pathname);
-    setActiveSection("");
-  };
-
   const updateForm = (field: keyof typeof form, value: string) => {
     setForm((current) => ({ ...current, [field]: value }));
   };
@@ -452,41 +447,19 @@ const Information = () => {
       </div>
 
       <main className="container mx-auto max-w-5xl px-4 py-10">
-        {!activeSection ? (
-          <section>
-            <div className="mb-8 text-center">
-              <h2 className="font-display text-3xl font-bold text-foreground md:text-4xl">Select Information</h2>
-              <p className="mt-3 text-muted-foreground">Choose the information you want to view.</p>
-            </div>
-            <div className="grid gap-4 md:grid-cols-3">
-              {infoNav.map((item) => (
-                <a
-                  key={item.id}
-                  href={`/information#${item.id}`}
-                  onClick={() => setActiveSection(item.id)}
-                  className="rounded-md border border-border bg-card p-5 font-bold text-card-foreground shadow-sm transition-colors hover:border-teal/50 hover:bg-teal/10 hover:text-teal"
-                >
-                  {item.title}
-                </a>
-              ))}
-            </div>
-          </section>
-        ) : (
+        {activeSection ? (
           <section id={activeSection} className="scroll-mt-28">
-            <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div className="mb-6">
               <div>
                 <h2 className="font-display text-3xl font-bold text-foreground md:text-4xl">{activeTitle}</h2>
                 <div className="mt-3 h-1 w-24 rounded-full bg-gold" />
               </div>
-              <Button variant="outline" onClick={showInformationMenu}>
-                Select another section
-              </Button>
             </div>
             <div className="space-y-8 rounded-md border border-border bg-card p-6 shadow-sm md:p-8">
               {renderActiveContent()}
             </div>
           </section>
-        )}
+        ) : null}
       </main>
 
       <Footer />

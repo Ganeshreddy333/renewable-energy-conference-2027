@@ -230,7 +230,6 @@ const countries = [
   "Yemen",
   "Zambia",
   "Zimbabwe",
-  "Other",
 ];
 
 const AbstractSubmission = () => {
@@ -250,10 +249,9 @@ const AbstractSubmission = () => {
     title: "Scientific Sessions",
     content: tracks.map((track) => `${track.title} | ${track.description}`).join("\n"),
   });
-  const managedTracks = splitLines(sessions.content)
-    .map((line) => line.split("|")[0].trim())
-    .filter((title) => title && title !== "Browse the conference's scientific sessions.");
-  const availableTracks = (managedTracks.length ? managedTracks : tracks.map((track) => track.title)).map((title) => ({ title }));
+  const availableTracks = splitLines(sessions.content).map((line) => ({
+    title: line.split("|")[0].trim(),
+  }));
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [activeSection, setActiveSection] = useState("");
   const [formData, setFormData] = useState({
@@ -271,11 +269,6 @@ const AbstractSubmission = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isCaptchaVerified, setIsCaptchaVerified] = useState(false);
   const [captchaResetKey, setCaptchaResetKey] = useState(0);
-  const [countrySearch, setCountrySearch] = useState("");
-  const [otherCountry, setOtherCountry] = useState("");
-  const filteredCountries = countries.filter((country) =>
-    country.toLowerCase().includes(countrySearch.trim().toLowerCase()),
-  );
 
   useEffect(() => {
     const selectSectionFromHash = () => {
@@ -288,11 +281,6 @@ const AbstractSubmission = () => {
 
     return () => window.removeEventListener("hashchange", selectSectionFromHash);
   }, [pathname]);
-
-  const showAbstractMenu = () => {
-    window.history.replaceState(null, "", pathname);
-    setActiveSection("");
-  };
 
   const appendFiles = (files: FileList | null) => {
     if (!files || files.length === 0) return;
@@ -346,7 +334,6 @@ const AbstractSubmission = () => {
       formData.phone,
       formData.organization,
       formData.country,
-      formData.country === "Other" ? otherCountry : "selected",
       formData.presentationType,
       formData.session,
     ];
@@ -406,10 +393,9 @@ const AbstractSubmission = () => {
         email: formData.email.trim(),
         phone: formData.phone.trim(),
         affiliation: formData.organization.trim(),
-        country: (formData.country === "Other" ? otherCountry : formData.country).trim(),
+        country: formData.country.trim(),
         presentation_type: formData.presentationType.trim(),
         abstract_title: formData.session.trim(),
-        session: formData.session.trim(),
         abstract_text: "Submitted as uploaded document.",
         file_paths: storedFiles.length > 0 ? storedFiles : null,
         status: "submitted",
@@ -430,7 +416,6 @@ const AbstractSubmission = () => {
         presentationType: "",
         session: "",
       });
-      setOtherCountry("");
       setSelectedFiles([]);
       setIsCaptchaVerified(false);
       setCaptchaResetKey((current) => current + 1);
@@ -455,38 +440,11 @@ const AbstractSubmission = () => {
       </div>
       <div className="bg-background py-12">
         <div className="container mx-auto max-w-5xl px-4">
-          {!activeSection ? (
-            <section>
-              <div className="mb-8 text-center">
-                <h2 className="font-display text-3xl font-bold text-foreground md:text-4xl">Select Abstract Section</h2>
-                <p className="mt-3 text-muted-foreground">Choose what you want to open.</p>
-              </div>
-              <div className="grid gap-4 md:grid-cols-2">
-                {[
-                  { id: "submit-abstract", title: "Abstract Submission" },
-                  { id: "scientific-sessions", title: sessions.title },
-                ].map((item) => (
-                  <a
-                    key={item.id}
-                    href={`/abstract-submission#${item.id}`}
-                    onClick={() => setActiveSection(item.id)}
-                    className="rounded-md border border-border bg-card p-6 font-display text-xl font-bold text-card-foreground shadow-sm transition-colors hover:border-teal/50 hover:bg-teal/10 hover:text-teal"
-                  >
-                    {item.title}
-                  </a>
-                ))}
-              </div>
-            </section>
-          ) : activeSection === "scientific-sessions" ? (
+          {activeSection === "scientific-sessions" ? (
             <div id="scientific-sessions" className="rounded-md border border-border bg-card shadow-sm">
-              <div className="border-b border-border p-4">
-                <Button type="button" variant="outline" onClick={showAbstractMenu}>
-                  Select another section
-                </Button>
-              </div>
               <SessionsSection />
             </div>
-          ) : (
+          ) : activeSection === "submit-abstract" ? (
             <div id="submit-abstract" className="bg-card border border-border rounded-xl p-8">
             <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
               <div>
@@ -502,9 +460,6 @@ const AbstractSubmission = () => {
                   <Download className="mr-2 h-4 w-4" />
                   Download Template
                 </a>
-              </Button>
-              <Button type="button" variant="outline" className="shrink-0" onClick={showAbstractMenu}>
-                Select another section
               </Button>
             </div>
 
@@ -549,49 +504,18 @@ const AbstractSubmission = () => {
 
               <div>
                 <label className="text-sm font-body font-medium text-card-foreground mb-1 block">Country *</label>
-                <Select
-                  value={formData.country}
-                  onValueChange={(value) => {
-                    setFormData({ ...formData, country: value });
-                    setCountrySearch("");
-                    if (value !== "Other") setOtherCountry("");
-                  }}
-                  required
-                >
+                <Select value={formData.country} onValueChange={(value) => setFormData({ ...formData, country: value })} required>
                   <SelectTrigger>
                     <SelectValue placeholder="Select country" />
                   </SelectTrigger>
                   <SelectContent>
-                    <div className="sticky top-0 z-10 bg-popover p-2">
-                      <Input
-                        autoFocus
-                        value={countrySearch}
-                        onChange={(event) => setCountrySearch(event.target.value)}
-                        onKeyDown={(event) => event.stopPropagation()}
-                        placeholder="Search country"
-                        aria-label="Search country"
-                      />
-                    </div>
-                    {filteredCountries.map((country) => (
+                    {countries.map((country) => (
                       <SelectItem key={country} value={country}>
                         {country}
                       </SelectItem>
                     ))}
-                    {filteredCountries.length === 0 && (
-                      <p className="px-2 py-3 text-sm text-muted-foreground">No countries found.</p>
-                    )}
                   </SelectContent>
                 </Select>
-                {formData.country === "Other" && (
-                  <Input
-                    className="mt-2"
-                    value={otherCountry}
-                    onChange={(event) => setOtherCountry(event.target.value)}
-                    placeholder="Enter country name"
-                    aria-label="Enter country name"
-                    required
-                  />
-                )}
               </div>
 
               <div>
@@ -703,7 +627,7 @@ const AbstractSubmission = () => {
               </Button>
             </form>
           </div>
-          )}
+          ) : null}
         </div>
       </div>
       <Footer />

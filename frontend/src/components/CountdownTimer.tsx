@@ -34,13 +34,13 @@ const CountdownTimer = () => {
   ];
 
   return (
-    <div className="grid grid-cols-4 gap-2 md:gap-3">
+    <div className="grid grid-cols-4 gap-1.5">
       {units.map((unit) => (
-        <div key={unit.label} className="rounded-md border border-teal/15 bg-teal/5 px-2 py-3 text-center">
-          <div className="font-display text-2xl font-extrabold text-teal md:text-4xl">
+        <div key={unit.label} className="rounded-md border border-teal/15 bg-teal/5 px-1.5 py-2 text-center">
+          <div className="font-display text-2xl font-extrabold text-teal">
             {String(unit.value).padStart(2, "0")}
           </div>
-          <div className="mt-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground md:text-xs">
+          <div className="mt-1 text-[9px] font-bold uppercase tracking-wider text-muted-foreground">
             {unit.label}
           </div>
         </div>

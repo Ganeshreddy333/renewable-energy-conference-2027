@@ -103,14 +103,15 @@ const Section = ({
   children: ReactNode;
   tinted?: boolean;
 }) => (
-  <section className={tinted ? "bg-teal/10 py-14" : "bg-background py-14"}>
-    <div className="container mx-auto px-4 max-w-6xl">
-      <div className="grid grid-cols-1 lg:grid-cols-[0.9fr_2fr] gap-8 lg:gap-12">
-        <div className="self-start rounded-md border border-border bg-card p-6 shadow-sm">
-          {eyebrow ? <p className="text-gold text-sm uppercase tracking-wider font-body mb-2">{eyebrow}</p> : null}
-          <h2 className="font-display text-3xl md:text-4xl font-bold text-foreground">{title}</h2>
-        </div>
-        <div className="rounded-md border border-border bg-card p-6 md:p-8 shadow-lg shadow-teal/5">{children}</div>
+  <section className={tinted ? "bg-teal/10 py-16 md:py-20" : "bg-background py-16 md:py-20"}>
+    <div className="container mx-auto max-w-6xl px-4">
+      <div className="mb-8 max-w-4xl">
+        {eyebrow ? <p className="mb-3 text-sm font-bold uppercase tracking-[0.2em] text-gold">{eyebrow}</p> : null}
+        <div className="mb-4 h-1 w-14 rounded-full bg-gold" />
+        <h2 className="font-display text-3xl font-bold leading-tight text-foreground md:text-4xl">{title}</h2>
+      </div>
+      <div className="max-w-5xl border-l-4 border-teal/20 pl-6 md:pl-8">
+        <div className="rounded-r-md border border-border/70 bg-card/70 p-6 shadow-sm md:p-8">{children}</div>
       </div>
     </div>
   </section>
@@ -161,22 +162,35 @@ const About = () => {
     <div className="min-h-screen bg-background">
       <Navbar />
       <div className="pt-20 hero-gradient py-20">
-        <div className="container mx-auto px-4 max-w-5xl">
-          <p className="text-gold-light font-body mb-3">Renewable Energy - 2027</p>
-          <h1 className="text-4xl md:text-6xl font-bold text-gold font-display mb-5">About the Conference</h1>
-          <p className="text-hero-foreground/80 font-body text-lg max-w-3xl">
+        <div className="container mx-auto max-w-5xl px-4">
+          <p className="mb-3 text-sm font-bold uppercase tracking-[0.22em] text-gold-light">Renewable Energy - 2027</p>
+          <div className="mb-5 h-1 w-16 rounded-full bg-gold" />
+          <h1 className="mb-5 font-display text-4xl font-bold leading-tight text-white md:text-6xl">About the Conference</h1>
+          <p className="max-w-3xl text-lg leading-relaxed text-hero-foreground/80">
             World Conference on Renewable Energy & Sustainable Energy
           </p>
         </div>
       </div>
 
-      <Section eyebrow="About" title={intro.title}>
-        <div className="space-y-5 text-muted-foreground font-body leading-relaxed">
-          {splitParagraphs(intro.content).map((paragraph) => (
-            <p key={paragraph}>{paragraph}</p>
-          ))}
+      <section className="bg-background py-16 md:py-20">
+        <div className="container mx-auto max-w-5xl px-4">
+          <div className="mb-10 max-w-3xl">
+            <p className="mb-3 text-sm font-bold uppercase tracking-[0.22em] text-gold">About</p>
+            <div className="mb-5 h-1 w-16 rounded-full bg-gold" />
+            <h2 className="font-display text-4xl font-bold leading-tight text-foreground md:text-5xl">
+              {intro.title}
+            </h2>
+          </div>
+          <div className="relative max-w-4xl border-l-4 border-teal/20 pl-6 md:pl-8">
+            <div className="absolute -left-[7px] top-0 h-14 w-1 rounded-full bg-gold" />
+            <div className="space-y-6 text-base leading-relaxed text-muted-foreground md:text-lg">
+              {splitParagraphs(intro.content).map((paragraph) => (
+                <p key={paragraph}>{paragraph}</p>
+              ))}
+            </div>
+          </div>
         </div>
-      </Section>
+      </section>
 
       <Section eyebrow="Speaker Value" title={benefits.title} tinted>
         <BulletList items={splitLines(benefits.content)} />
