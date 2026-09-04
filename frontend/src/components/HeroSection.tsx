@@ -136,7 +136,7 @@ const HeroSection = () => {
               className="mx-auto flex w-full max-w-[760px] flex-col items-center gap-4 sm:flex-row sm:flex-nowrap sm:justify-center"
             >
               <Link
-                href="/abstract-submission"
+                href="/abstract-submission#submit-abstract"
                 className="inline-flex min-h-14 items-center justify-center gap-3 rounded-md bg-gold px-7 py-4 text-base font-extrabold text-hero-bg shadow-xl shadow-black/15 transition-all hover:-translate-y-0.5 hover:bg-gold-light"
               >
                 <Send size={19} />
