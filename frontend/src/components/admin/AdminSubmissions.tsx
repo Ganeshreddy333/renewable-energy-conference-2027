@@ -129,7 +129,7 @@ const AdminSubmissions = () => {
         .map((segment) => encodeURIComponent(segment))
         .join("/");
 
-      const downloadUrl = `${getApiBaseUrl()}/storage/abstract-assets/${normalizedPath}`;
+      const downloadUrl = `${getApiBaseUrl()}/storage/abstract-assets/download/${normalizedPath}`;
       const response = await fetch(downloadUrl, {
         headers: getAdminAuthHeaders(),
       });

@@ -40,7 +40,7 @@ export class StorageController {
       const publicId = await this.cloudinaryService.saveLocalFile(file.buffer, `${bucket}/${storedPath}`);
 
       return {
-        url: `/storage/${bucket}/${publicId}`,
+        url: `/storage/${bucket}/${storedPath}`,
         publicId,
         path: storedPath,
       };
@@ -53,15 +53,14 @@ export class StorageController {
   @UseGuards(AdminDataGuard)
   async downloadLocal(@Param('bucket') bucket: string, @Param() params: any, @Res() response: Response) {
     const publicId = Array.isArray(params.path) ? params.path.join('/') : params.path;
-    try {
-      const file = await this.cloudinaryService.getLocalFile(`${bucket}/${publicId}`);
-      response.setHeader('Content-Disposition', `attachment; filename="${basename(publicId)}"`);
-      response.setHeader('Content-Type', this.contentType(publicId));
-      response.setHeader('Cache-Control', 'private, no-store');
-      response.send(file);
-    } catch {
-      throw new NotFoundException('Stored file was not found. Configure Cloudinary to access files uploaded there.');
-    }
+    return this.sendLocalFile(bucket, publicId, response);
+  }
+
+  @Get(':bucket/download/*path')
+  @UseGuards(AdminDataGuard)
+  async downloadStoredFile(@Param('bucket') bucket: string, @Param() params: any, @Res() response: Response) {
+    const publicId = Array.isArray(params.path) ? params.path.join('/') : params.path;
+    return this.sendLocalFile(bucket, publicId, response);
   }
 
   @Get(':bucket/*path')
@@ -69,12 +68,7 @@ export class StorageController {
   async download(@Param('bucket') bucket: string, @Param() params: any, @Res() response: Response) {
     const publicId = Array.isArray(params.path) ? params.path.join('/') : params.path;
     if (bucket === 'abstract-assets') {
-      const file = await this.cloudinaryService.getLocalFile(`${bucket}/${publicId}`);
-      response.setHeader('Content-Disposition', `attachment; filename="${basename(publicId)}"`);
-      response.setHeader('Content-Type', this.contentType(publicId));
-      response.setHeader('Cache-Control', 'private, no-store');
-      response.send(file);
-      return;
+      return this.sendLocalFile(bucket, publicId, response);
     }
     const url = await this.cloudinaryService.getUrl(`${bucket}/${publicId}`);
     return { url };
@@ -103,5 +97,17 @@ export class StorageController {
       '.webp': 'image/webp',
     };
     return types[extname(filePath).toLowerCase()] || 'application/octet-stream';
+  }
+
+  private async sendLocalFile(bucket: string, publicId: string, response: Response) {
+    try {
+      const file = await this.cloudinaryService.getLocalFile(`${bucket}/${publicId}`);
+      response.setHeader('Content-Disposition', `attachment; filename="${basename(publicId)}"`);
+      response.setHeader('Content-Type', this.contentType(publicId));
+      response.setHeader('Cache-Control', 'private, no-store');
+      response.send(file);
+    } catch {
+      throw new NotFoundException('Stored file was not found.');
+    }
   }
 }
