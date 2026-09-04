@@ -58,8 +58,6 @@ const MediaPartnersSection = () => {
     );
   }
 
-  const marqueeItems = [...partners, ...partners];
-
   return (
     <section className="py-20 bg-muted/40">
       <div className="container mx-auto px-4">
@@ -68,15 +66,15 @@ const MediaPartnersSection = () => {
           <h2 className="text-3xl md:text-4xl font-bold text-foreground font-display">Media Partners</h2>
         </div>
 
-        <div className="media-marquee overflow-hidden rounded-3xl border border-border bg-background p-4">
-          <div className="media-marquee-track flex gap-6">
-            {marqueeItems.map((partner, index) => (
+        <div className="rounded-3xl border border-border bg-background p-4">
+          <div className="grid grid-cols-1 justify-items-center gap-6 sm:grid-cols-2 xl:grid-cols-3">
+            {partners.map((partner, index) => (
               <a
                 key={`${partner.name}-${index}`}
                 href={partner.website_url || "#"}
                 target={partner.website_url ? "_blank" : undefined}
                 rel={partner.website_url ? "noreferrer" : undefined}
-                className="min-w-[300px] shrink-0 rounded-3xl border border-border bg-card p-6"
+                className="w-full max-w-[300px] rounded-3xl border border-border bg-card p-6"
               >
                 <div className="relative mb-4 flex h-14 w-14 items-center justify-center overflow-hidden rounded-2xl gold-gradient">
                   {partner.logo_url ? (

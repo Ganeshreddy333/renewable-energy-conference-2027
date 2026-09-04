@@ -347,7 +347,7 @@ const PricingSection = () => {
     setAppliedCoupon({
       code: result.code ?? result.coupon?.code,
       discountPercent: result.discount_percent ?? null,
-      discountAmount: result.discount_amount ?? null,
+      discountAmount: result.discount_percent ? null : result.discount_amount ?? null,
     });
 
     const discountLabel = result.discount_amount
@@ -450,7 +450,7 @@ const PricingSection = () => {
       effectiveCoupon = {
         code: couponResult.code,
         discountPercent: couponResult.discount_percent ?? null,
-        discountAmount: couponResult.discount_amount ?? null,
+        discountAmount: couponResult.discount_percent ? null : couponResult.discount_amount ?? null,
       };
     } else {
       effectiveCoupon = null;

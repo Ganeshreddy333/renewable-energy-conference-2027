@@ -249,9 +249,10 @@ const AbstractSubmission = () => {
     title: "Scientific Sessions",
     content: tracks.map((track) => `${track.title} | ${track.description}`).join("\n"),
   });
-  const availableTracks = splitLines(sessions.content).map((line) => ({
+  const parsedTracks = splitLines(sessions.content).map((line) => ({
     title: line.split("|")[0].trim(),
   }));
+  const availableTracks = parsedTracks.length > 1 ? parsedTracks : tracks.map((track) => ({ title: track.title }));
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [activeSection, setActiveSection] = useState("");
   const [formData, setFormData] = useState({

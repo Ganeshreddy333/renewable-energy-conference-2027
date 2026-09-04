@@ -169,10 +169,13 @@ const SessionsSection = () => {
     title: "Sessions",
     content: tracks.map((track) => `${track.title} | ${track.description}`).join("\n"),
   });
-  const managedTracks = splitLines(section.content).map((line) => {
+  const parsedTracks = splitLines(section.content).map((line) => {
     const [title, ...descriptionParts] = line.split("|");
     return { title: title.trim(), description: descriptionParts.join("|").trim() };
   });
+  const managedTracks = parsedTracks.length > 1 && parsedTracks.some((track) => track.description)
+    ? parsedTracks
+    : tracks;
 
   return (
     <section id="sessions" className="bg-background pt-16 pb-8">

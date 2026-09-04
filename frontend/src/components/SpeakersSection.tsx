@@ -81,16 +81,16 @@ const SpeakersSection = ({ showEmptyState = true }: SpeakersSectionProps) => {
           </h2>
         </div>
 
-        <div className="media-marquee overflow-hidden rounded-md border border-border/40 bg-background/5 p-3">
-          <div className="media-marquee-track flex gap-6">
-          {[...speakers, ...speakers].map((speaker, i) => (
+        <div className="rounded-md border border-border/40 bg-background/5 p-3">
+          <div className="grid grid-cols-1 justify-items-center gap-6 sm:grid-cols-2 xl:grid-cols-3">
+          {speakers.map((speaker, i) => (
             <motion.div
               key={`${speaker.id}-${i}`}
               initial={{ opacity: 0, scale: 0.9 }}
               whileInView={{ opacity: 1, scale: 1 }}
               viewport={{ once: true }}
               transition={{ duration: 0.4, delay: i * 0.05 }}
-              className="group min-w-[250px] shrink-0 rounded-md border border-border bg-card p-5 text-center"
+              className="group w-full max-w-[250px] rounded-md border border-border bg-card p-5 text-center"
             >
               <div className="relative mx-auto mb-4 flex h-24 w-24 items-center justify-center overflow-hidden rounded-full border-2 border-gold/40 bg-gradient-to-br from-gold/30 to-teal/30 transition-colors group-hover:border-gold">
                 {speaker.image_url ? (
