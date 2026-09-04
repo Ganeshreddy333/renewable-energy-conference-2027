@@ -202,7 +202,10 @@ const AdminMediaPartners = () => {
                 <Input placeholder="Website URL" value={form.website_url} onChange={(e) => setForm({ ...form, website_url: e.target.value })} />
                 <Input placeholder="Logo/Image URL" value={form.logo_url} onChange={(e) => setForm({ ...form, logo_url: e.target.value })} />
               </div>
-              <Input type="number" placeholder="Display Order" value={form.display_order} onChange={(e) => setForm({ ...form, display_order: parseInt(e.target.value, 10) || 0 })} />
+              <div>
+                <label className="text-xs text-muted-foreground">Number of cards (0 hides from site)</label>
+                <Input type="number" min="0" placeholder="Number of cards" value={form.display_order} onChange={(e) => setForm({ ...form, display_order: parseInt(e.target.value, 10) || 0 })} />
+              </div>
               <textarea className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm min-h-[110px]" placeholder="Short description" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
               <div className="flex items-center justify-between rounded-md border border-border px-3 py-2">
                 <span className="text-sm">Visible on site</span>
@@ -231,7 +234,7 @@ const AdminMediaPartners = () => {
                   <TableHead>Partner</TableHead>
                   <TableHead className="hidden md:table-cell">Tier</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead>Order</TableHead>
+                  <TableHead>Cards</TableHead>
                   <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>

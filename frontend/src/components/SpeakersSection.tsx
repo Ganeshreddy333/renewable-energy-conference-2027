@@ -11,6 +11,8 @@ type Speaker = Tables<"speakers">;
 const isCommitteeMember = (speaker: Speaker) =>
   (speaker.session_type || "").toLowerCase().includes("committee");
 
+const getCardCount = (value: number | null) => Math.max(0, Math.floor(value || 0));
+
 interface SpeakersSectionProps {
   showEmptyState?: boolean;
 }
@@ -27,7 +29,9 @@ const SpeakersSection = ({ showEmptyState = true }: SpeakersSectionProps) => {
       .order("created_at", { ascending: true });
 
     if (data) {
-      setSpeakers(data.filter((speaker: Speaker) => !isCommitteeMember(speaker)));
+      setSpeakers(
+        data.filter((speaker: Speaker) => !isCommitteeMember(speaker) && speaker.is_visible && getCardCount(speaker.display_order) > 0),
+      );
     }
   }, []);
 
@@ -47,7 +51,14 @@ const SpeakersSection = ({ showEmptyState = true }: SpeakersSectionProps) => {
     };
   }, [fetchSpeakers]);
 
-  if (speakers.length === 0) {
+  const repeatedSpeakers = speakers.flatMap((speaker) =>
+    Array.from({ length: getCardCount(speaker.display_order) }, (_, index) => ({
+      speaker,
+      instance: index,
+    })),
+  );
+
+  if (repeatedSpeakers.length === 0) {
     if (!showEmptyState) {
       return null;
     }
@@ -81,17 +92,23 @@ const SpeakersSection = ({ showEmptyState = true }: SpeakersSectionProps) => {
           </h2>
         </div>
 
-        <div className="rounded-md border border-border/40 bg-background/5 p-3">
-          <div className="grid grid-cols-1 justify-items-center gap-6 sm:grid-cols-2 xl:grid-cols-3">
-          {speakers.map((speaker, i) => (
-            <motion.div
-              key={`${speaker.id}-${i}`}
-              initial={{ opacity: 0, scale: 0.9 }}
-              whileInView={{ opacity: 1, scale: 1 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.4, delay: i * 0.05 }}
-              className="group w-full max-w-[250px] rounded-md border border-border bg-card p-5 text-center"
-            >
+        <div className="media-marquee overflow-hidden rounded-md border border-border/40 bg-background/5 p-3">
+          <div className="media-marquee-track">
+            {[repeatedSpeakers, repeatedSpeakers].map((track, trackIndex) => (
+              <div
+                key={trackIndex}
+                className="flex shrink-0 items-stretch gap-6"
+                aria-hidden={trackIndex === 1}
+              >
+                {track.map(({ speaker, instance }, i) => (
+                  <motion.div
+                    key={`${speaker.id}-${trackIndex}-${instance}`}
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    whileInView={{ opacity: 1, scale: 1 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.4, delay: i * 0.05 }}
+                    className="group w-[250px] shrink-0 rounded-md border border-border bg-card p-5 text-center"
+                  >
               <div className="relative mx-auto mb-4 flex h-24 w-24 items-center justify-center overflow-hidden rounded-full border-2 border-gold/40 bg-gradient-to-br from-gold/30 to-teal/30 transition-colors group-hover:border-gold">
                 {speaker.image_url ? (
                   <Image src={speaker.image_url} alt={speaker.name} fill sizes="96px" className="object-cover" />
@@ -108,8 +125,10 @@ const SpeakersSection = ({ showEmptyState = true }: SpeakersSectionProps) => {
                 {speaker.organization || speaker.title || "Conference Speaker"}
               </p>
               {speaker.topic ? <p className="mt-3 line-clamp-2 text-xs text-muted-foreground">{speaker.topic}</p> : null}
-            </motion.div>
-          ))}
+                  </motion.div>
+                ))}
+              </div>
+            ))}
           </div>
         </div>
       </div>

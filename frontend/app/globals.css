@@ -187,12 +187,23 @@
 
   .media-marquee-track {
     display: flex;
-    gap: 1.5rem;
-    animation: marquee 32s linear infinite;
+    width: max-content;
+    animation: marquee 36s linear infinite;
+    will-change: transform;
   }
 
   .media-marquee:hover .media-marquee-track {
     animation-play-state: paused;
+  }
+
+  .media-marquee-track > div {
+    gap: 1.5rem;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .media-marquee-track {
+      animation: none;
+    }
   }
 
   @keyframes marquee {

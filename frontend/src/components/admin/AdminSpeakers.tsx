@@ -197,6 +197,7 @@ const AdminSpeakers = () => {
                   <label className="text-xs text-muted-foreground">Number of cards (0 hides from site)</label>
                   <Input
                     type="number"
+                    min="0"
                     value={form.display_order}
                     onChange={(e) => setForm({ ...form, display_order: parseInt(e.target.value, 10) || 0 })}
                   />
