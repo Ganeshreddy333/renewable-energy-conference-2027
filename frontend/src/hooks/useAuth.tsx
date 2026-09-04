@@ -4,7 +4,7 @@ import { createContext, useContext, useCallback, useEffect, useRef, useState, ty
 import { apiClient } from "@/integrations/api/client";
 
 type User = { id: string; email?: string; role?: string; user_metadata?: Record<string, unknown> };
-type Session = { access_token: string; user: User };
+type Session = { access_token: string; user: User; expires_at?: number };
 type AuthError = { message: string };
 
 interface AuthContextType {
@@ -24,6 +24,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
   const authCheckId = useRef(0);
+  const expiryTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const checkAdmin = useCallback(async (nextUser: User) => nextUser.role === "admin", []);
 
@@ -37,9 +38,28 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setUser(validSession?.user ?? null);
 
     if (!validSession) {
+      if (expiryTimer.current) {
+        clearTimeout(expiryTimer.current);
+        expiryTimer.current = null;
+      }
       setIsAdmin(false);
       setLoading(false);
       return;
+    }
+
+    if (expiryTimer.current) {
+      clearTimeout(expiryTimer.current);
+    }
+    if (validSession.expires_at) {
+      const remainingMs = validSession.expires_at - Date.now();
+      if (remainingMs <= 0) {
+        setLoading(false);
+        await apiClient.auth.signOut();
+        return;
+      }
+      expiryTimer.current = setTimeout(() => {
+        void apiClient.auth.signOut();
+      }, remainingMs);
     }
 
     try {
@@ -68,6 +88,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         }, 0);
       }
     );
+    const handleStorageChange = (event: StorageEvent) => {
+      if (event.key === "localAuthSession") {
+        void apiClient.auth.getSession().then(({ data: { session } }) => applySession(session));
+      }
+    };
+    window.addEventListener("storage", handleStorageChange);
 
     apiClient.auth.getSession()
       .then(({ data: { session }, error }) => {
@@ -87,6 +113,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     return () => {
       authCheckId.current += 1;
+      if (expiryTimer.current) {
+        clearTimeout(expiryTimer.current);
+      }
+      window.removeEventListener("storage", handleStorageChange);
       subscription.unsubscribe();
     };
   }, [applySession]);

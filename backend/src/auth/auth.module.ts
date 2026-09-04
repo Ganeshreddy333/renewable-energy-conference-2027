@@ -17,12 +17,10 @@ import { UsersModule } from '../users/users.module';
           throw new Error('JWT_SECRET must be defined');
         }
 
-        const expiresIn = configService.get<string>('JWT_EXPIRATION') ?? '3600s';
-
         return {
           secret,
           signOptions: {
-            expiresIn: expiresIn as any,
+            expiresIn: '1800s',
           },
         };
       },

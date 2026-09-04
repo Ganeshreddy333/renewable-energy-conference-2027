@@ -2,7 +2,7 @@ import type { Database } from "./types";
 
 type QueryResult<T = unknown> = { data: T | null; error: { message: string } | null };
 type AuthUser = { id: string; email?: string; user_metadata?: Record<string, unknown>; role?: string };
-type AuthSession = { access_token: string; user: AuthUser };
+type AuthSession = { access_token: string; user: AuthUser; expires_at?: number };
 type Order = { column: string; ascending?: boolean };
 
 const getApiBaseUrl = () => {
@@ -14,6 +14,16 @@ const getApiBaseUrl = () => {
 const API_BASE_URL = getApiBaseUrl();
 const AUTH_KEY = "localAuthSession";
 const authListeners = new Set<(event: string, session: AuthSession | null) => void>();
+const SESSION_DURATION_MS = 30 * 60 * 1000;
+
+const getSessionExpiry = (accessToken: string) => {
+  try {
+    const payload = JSON.parse(atob(accessToken.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")));
+    return typeof payload.iat === "number" ? payload.iat * 1000 + SESSION_DURATION_MS : undefined;
+  } catch {
+    return undefined;
+  }
+};
 
 const encodeStoragePath = (bucket: string, path: string) => {
   const cleanPath = path
@@ -31,7 +41,15 @@ const readSession = (): AuthSession | null => {
   if (typeof window === "undefined") return null;
   try {
     const raw = window.localStorage.getItem(AUTH_KEY);
-    return raw ? JSON.parse(raw) : null;
+    const session = raw ? JSON.parse(raw) as AuthSession : null;
+    if (session && !session.expires_at) {
+      session.expires_at = getSessionExpiry(session.access_token);
+    }
+    if (session?.expires_at && session.expires_at <= Date.now()) {
+      window.localStorage.removeItem(AUTH_KEY);
+      return null;
+    }
+    return session;
   } catch {
     return null;
   }
@@ -237,7 +255,7 @@ export const apiClient = {
         body: JSON.stringify({ email, password }),
       });
       if (error || !data) return { data: null, error };
-      const session = { access_token: data.accessToken, user: data.user };
+      const session = { access_token: data.accessToken, user: data.user, expires_at: Date.now() + SESSION_DURATION_MS };
       writeSession(session);
       return { data: { session, user: data.user }, error: null as { message: string } | null };
     },
