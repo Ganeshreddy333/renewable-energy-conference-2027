@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { v2 as cloudinary } from 'cloudinary';
 import { ConfigService } from '@nestjs/config';
 import { promises as fs } from 'fs';
-import { basename, dirname, join, normalize, resolve } from 'path';
+import { dirname, isAbsolute, normalize, relative, resolve, sep } from 'path';
 
 @Injectable()
 export class CloudinaryService {
@@ -56,6 +56,18 @@ export class CloudinaryService {
     });
   }
 
+  async saveLocalFile(fileBuffer: Buffer, relativePath: string): Promise<string> {
+    const publicId = this.localPublicId(relativePath);
+    const target = this.localPath(publicId);
+    await fs.mkdir(dirname(target), { recursive: true });
+    await fs.writeFile(target, fileBuffer);
+    return publicId;
+  }
+
+  async deleteLocalFile(relativePath: string): Promise<void> {
+    await fs.rm(this.localPath(this.localPublicId(relativePath)), { force: true });
+  }
+
   async deleteFile(publicId: string): Promise<void> {
     if (!this.configured) {
       await fs.rm(this.localPath(publicId), { force: true });
@@ -74,11 +86,20 @@ export class CloudinaryService {
   }
 
   private localPath(publicId: string) {
-    const safePath = normalize(publicId).replace(/^(\.\.(\/|\\|$))+/, '');
+    const safePath = normalize(publicId);
     const target = resolve(this.localStorageRoot, safePath);
-    if (!target.startsWith(`${this.localStorageRoot}/`)) {
+    const pathFromRoot = relative(this.localStorageRoot, target);
+    if (!pathFromRoot || pathFromRoot === '..' || pathFromRoot.startsWith(`..${sep}`) || isAbsolute(pathFromRoot)) {
       throw new Error('Invalid storage path');
     }
     return target;
+  }
+
+  private localPublicId(relativePath: string) {
+    const normalized = relativePath.replace(/\\/g, '/').replace(/^\/+/, '');
+    if (!normalized || normalized.split('/').some((segment) => segment === '..' || segment === '.')) {
+      throw new Error('Invalid storage path');
+    }
+    return normalized;
   }
 }

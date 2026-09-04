@@ -1,6 +1,6 @@
 import { BadRequestException, Body, Controller, Delete, Get, NotFoundException, Param, Post, Res, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { basename, dirname } from 'path';
+import { basename, dirname, extname } from 'path';
 import type { Response } from 'express';
 import { CloudinaryService } from './cloudinary.service';
 import { AdminDataGuard } from '../data/admin-data.guard';
@@ -36,17 +36,13 @@ export class StorageController {
       const relativeDirectory = dirname(relativePath);
       const folderPath = relativeDirectory === '.' ? bucket : `${bucket}/${relativeDirectory}`;
       const fileName = basename(relativePath);
-
-      const result = await this.cloudinaryService.uploadFile(
-        file.buffer,
-        fileName,
-        folderPath,
-      );
+      const storedPath = `${relativeDirectory === '.' ? '' : `${relativeDirectory}/`}${fileName}`;
+      const publicId = await this.cloudinaryService.saveLocalFile(file.buffer, `${bucket}/${storedPath}`);
 
       return {
-        url: result.url,
-        publicId: result.publicId,
-        path: `${bucket}/${path || fileName}`,
+        url: `/storage/${bucket}/${publicId}`,
+        publicId,
+        path: storedPath,
       };
     } catch (error: any) {
       return { error: error?.message ?? String(error) };
@@ -59,7 +55,9 @@ export class StorageController {
     const publicId = Array.isArray(params.path) ? params.path.join('/') : params.path;
     try {
       const file = await this.cloudinaryService.getLocalFile(`${bucket}/${publicId}`);
-      response.setHeader('Content-Disposition', `inline; filename="${basename(publicId)}"`);
+      response.setHeader('Content-Disposition', `attachment; filename="${basename(publicId)}"`);
+      response.setHeader('Content-Type', this.contentType(publicId));
+      response.setHeader('Cache-Control', 'private, no-store');
       response.send(file);
     } catch {
       throw new NotFoundException('Stored file was not found. Configure Cloudinary to access files uploaded there.');
@@ -68,8 +66,16 @@ export class StorageController {
 
   @Get(':bucket/*path')
   @UseGuards(AdminDataGuard)
-  async download(@Param('bucket') bucket: string, @Param() params: any) {
+  async download(@Param('bucket') bucket: string, @Param() params: any, @Res() response: Response) {
     const publicId = Array.isArray(params.path) ? params.path.join('/') : params.path;
+    if (bucket === 'abstract-assets') {
+      const file = await this.cloudinaryService.getLocalFile(`${bucket}/${publicId}`);
+      response.setHeader('Content-Disposition', `attachment; filename="${basename(publicId)}"`);
+      response.setHeader('Content-Type', this.contentType(publicId));
+      response.setHeader('Cache-Control', 'private, no-store');
+      response.send(file);
+      return;
+    }
     const url = await this.cloudinaryService.getUrl(`${bucket}/${publicId}`);
     return { url };
   }
@@ -83,5 +89,19 @@ export class StorageController {
     } catch (error: any) {
       return { error: error?.message ?? String(error) };
     }
+  }
+
+  private contentType(filePath: string) {
+    const types: Record<string, string> = {
+      '.pdf': 'application/pdf',
+      '.doc': 'application/msword',
+      '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      '.txt': 'text/plain',
+      '.jpg': 'image/jpeg',
+      '.jpeg': 'image/jpeg',
+      '.png': 'image/png',
+      '.webp': 'image/webp',
+    };
+    return types[extname(filePath).toLowerCase()] || 'application/octet-stream';
   }
 }

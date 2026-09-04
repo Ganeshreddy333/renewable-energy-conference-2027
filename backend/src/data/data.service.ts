@@ -228,7 +228,7 @@ export class DataService {
           ...(Array.isArray(storedFiles) ? storedFiles.map((file: any) => typeof file === 'string' ? file : file?.path) : []),
           submission.voice_file_path,
         ].filter((path): path is string => typeof path === 'string' && path.length > 0);
-        await Promise.all(paths.map((path) => this.cloudinaryService.deleteFile(`abstract-assets/${path.replace(/^abstract-assets\//, '')}`)));
+        await Promise.all(paths.map((path) => this.cloudinaryService.deleteLocalFile(`abstract-assets/${path.replace(/^abstract-assets\//, '')}`)));
       }
     }
     await (this.prisma as any).$executeRawUnsafe(`DELETE FROM \`${table}\` WHERE \`id\` = ?`, id);
